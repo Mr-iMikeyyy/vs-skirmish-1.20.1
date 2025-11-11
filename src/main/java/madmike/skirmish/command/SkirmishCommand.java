@@ -16,7 +16,7 @@ public class SkirmishCommand {
     public static void register() {
         CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
 
-            LiteralArgumentBuilder<ServerCommandSource> root = literal("skirmish")
+            LiteralArgumentBuilder<ServerCommandSource> skirmishCommand = literal("skirmish")
                     // Base help command
                     .executes(ctx -> {
                         ServerPlayerEntity player = ctx.getSource().getPlayer();
@@ -123,7 +123,9 @@ public class SkirmishCommand {
                         return 1;
                     }));
 
-            dispatcher.register(root);
+            dispatcher.register(skirmishCommand);
+
+
         });
     }
 }
