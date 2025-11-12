@@ -14,10 +14,13 @@ public class SkirmishComponents implements ScoreboardComponentInitializer {
 
     public static final ComponentKey<NamesComponent> NAMES =
             ComponentRegistryV3.INSTANCE.getOrCreate(id("names"), NamesComponent.class);
+    public static final ComponentKey<ReturnPointComponent> RETURN_POINTS =
+            ComponentRegistryV3.INSTANCE.getOrCreate(id("return_points"), ReturnPointComponent.class);
 
 
     @Override
     public void registerScoreboardComponentFactories(ScoreboardComponentFactoryRegistry scoreboardComponentFactoryRegistry) {
         scoreboardComponentFactoryRegistry.registerScoreboardComponent(NAMES, NamesComponent::new);
+        scoreboardComponentFactoryRegistry.registerScoreboardComponent(RETURN_POINTS, ReturnPointComponent::new);
     }
 }
