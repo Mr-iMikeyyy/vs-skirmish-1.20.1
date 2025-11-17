@@ -1,0 +1,15 @@
+{
+  "type": "vs-skirmish:skirmish_dim_type",
+  "generator": {
+    "type": "minecraft:flat",
+    "settings": {
+      "biome": "minecraft:void",
+      "features": false,
+      "lakes": false,
+      "structure_overrides": [],
+      "layers": [
+        { "block": "minecraft:water", "height": 50 }
+      ]
+    }
+  }
+}

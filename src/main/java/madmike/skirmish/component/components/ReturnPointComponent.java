@@ -1,4 +1,4 @@
-package madmike.skirmish.components;
+package madmike.skirmish.component.components;
 
 import dev.onyxstudios.cca.api.v3.component.ComponentV3;
 import net.minecraft.nbt.NbtCompound;
@@ -20,8 +20,6 @@ import java.util.UUID;
 public class ReturnPointComponent implements ComponentV3 {
 
     private final Map<UUID, StoredReturn> returnPoints = new HashMap<>();
-
-
 
     public record StoredReturn(BlockPos pos, RegistryKey<World> dim) { }
 

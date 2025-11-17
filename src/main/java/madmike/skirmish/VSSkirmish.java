@@ -1,7 +1,7 @@
 package madmike.skirmish;
 
 import madmike.skirmish.command.SkirmishCommand;
-import madmike.skirmish.events.SkirmishEvents;
+import madmike.skirmish.event.SkirmishEvents;
 import net.fabricmc.api.ModInitializer;
 
 import org.slf4j.Logger;

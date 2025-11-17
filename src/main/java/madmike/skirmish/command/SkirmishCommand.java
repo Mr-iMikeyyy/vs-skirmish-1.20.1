@@ -3,10 +3,23 @@ package madmike.skirmish.command;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
+import com.mojang.brigadier.context.CommandContext;
+import g_mungus.vlib.api.VLibGameUtils;
+import madmike.skirmish.logic.SkirmishManager;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
+import xaero.pac.common.server.api.OpenPACServerAPI;
+import xaero.pac.common.server.parties.party.api.IPartyManagerAPI;
+import xaero.pac.common.server.parties.party.api.IServerPartyAPI;
+import xaero.pac.common.server.player.config.api.IPlayerConfigManagerAPI;
+import xaero.pac.common.server.player.config.api.PlayerConfigOptions;
+
+import java.util.HashSet;
+import java.util.Set;
+import java.util.UUID;
 
 import static net.minecraft.server.command.CommandManager.argument;
 import static net.minecraft.server.command.CommandManager.literal;
@@ -50,25 +63,30 @@ public class SkirmishCommand {
                     // /skirmish challenge <team> [wager]
                     // ============================================================
                     .then(literal("challenge")
+                            .requires((source -> {
+                                ServerPlayerEntity player = source.getPlayer();
+                                if (player == null) return false;
+                                IServerPartyAPI party = OpenPACServerAPI.get(source.getServer()).getPartyManager().getPartyByOwner(player.getUuid());
+                                return party != null;
+                            }))
                             .then(argument("team", StringArgumentType.string())
-                                    .executes(ctx -> {
-                                        ServerPlayerEntity player = ctx.getSource().getPlayer();
-                                        String teamName = StringArgumentType.getString(ctx, "team");
+                                    .suggests((context, builder) -> {
+                                        Set<UUID> ownerIds = new HashSet<>();
+                                        MinecraftServer server = context.getSource().getServer();
+                                        OpenPACServerAPI api = OpenPACServerAPI.get(server);
 
-                                        // TODO: Validate leader status, ensure on ship, create challenge
-                                        player.sendMessage(Text.literal("§eChallenging team §6" + teamName + "§e to a skirmish..."));
-                                        return 1;
+                                        api.getPartyManager().getAllStream().forEach(t -> ownerIds.add(t.getOwner().getUUID()));
+                                        for (UUID id : ownerIds) {
+                                            ServerPlayerEntity player = server.getPlayerManager().getPlayer(id);
+                                            if (player != null) {
+                                                builder.suggest(api.getPlayerConfigs().getLoadedConfig(id).getEffective(PlayerConfigOptions.PARTY_NAME));
+                                            }
+                                        }
+                                        return builder.buildFuture();
                                     })
+                                    .executes(SkirmishCommand::executeChallengeTeam)
                                     .then(argument("wager", IntegerArgumentType.integer(0))
-                                            .executes(ctx -> {
-                                                ServerPlayerEntity player = ctx.getSource().getPlayer();
-                                                String teamName = StringArgumentType.getString(ctx, "team");
-                                                int wager = IntegerArgumentType.getInteger(ctx, "wager");
-
-                                                // TODO: Create skirmish challenge with wager
-                                                player.sendMessage(Text.literal("§eChallenging team §6" + teamName + "§e with a wager of §6" + wager + " gold§e."));
-                                                return 1;
-                                            })
+                                            .executes(SkirmishCommand::executeChallengeTeam)
                                     )
                             )
                     )
@@ -127,5 +145,53 @@ public class SkirmishCommand {
 
 
         });
+    }
+
+    private static int executeChallengeTeam(CommandContext<ServerCommandSource> ctx) {
+        ServerPlayerEntity player = ctx.getSource().getPlayer();
+        if (player == null) {
+            ctx.getSource().sendMessage(Text.literal("You must be a player to use this command"));
+            return 0;
+        }
+
+        if (SkirmishManager.INSTANCE.hasChallengeOrSkirmish()) {
+            player.sendMessage(Text.literal("There is already a skirmish or challenge, please try again later."));
+            return 0;
+        }
+
+        MinecraftServer server = ctx.getSource().getServer();
+        OpenPACServerAPI api = OpenPACServerAPI.get(server);
+
+        IPartyManagerAPI pm = api.getPartyManager();
+        IPlayerConfigManagerAPI pc = api.getPlayerConfigs();
+
+        IServerPartyAPI otherParty = null;
+
+        String teamName = StringArgumentType.getString(ctx, "team");
+
+        Set<UUID> ownerIds = new HashSet<>();
+        pm.getAllStream().forEach(t -> ownerIds.add(t.getOwner().getUUID()));
+        for (UUID id : ownerIds) {
+            ServerPlayerEntity otherPlayer = server.getPlayerManager().getPlayer(id);
+            if (otherPlayer != null) {
+                if (pc.getLoadedConfig(id).getEffective(PlayerConfigOptions.PARTY_NAME).equals(teamName)) {
+                    otherParty = api.getPartyManager().getPartyByOwner(id);
+                    break;
+                }
+            }
+        }
+
+        if (otherParty == null) {
+            player.sendMessage(Text.literal("Error finding other team."));
+            return 0;
+        }
+
+        VLibGameUtils.INSTANCE.saveShipToTemplate();
+
+        VLibGameUtils.INSTANCE.getStructureTemplate()
+
+        // TODO: Validate leader status, ensure on ship, create challenge
+        player.sendMessage(Text.literal("§eChallenging team §6" + teamName + "§e to a skirmish..."));
+        return 1;
     }
 }
