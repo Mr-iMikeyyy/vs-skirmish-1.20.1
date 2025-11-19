@@ -42,12 +42,12 @@ public class SkirmishCommand {
                                 §6--- Players ---
                                 
                                 §e/skirmish stats §7- View your party’s stats
-                                §e/skirmish top §7- View top performing captains
+                                §e/skirmish top §7- View top performing parties
                                 §e/skirmish spectate §7- Watch the current skirmish
                                 
                                 §6--- Rules ---
                                 
-                                §7• Sink the enemy ship or eliminate all enemies to win.
+                                §7• Destroy the enemy helm or eliminate all enemies to win.
                                 """));
                         }
                         return 1;

@@ -2,12 +2,11 @@ package madmike.skirmish.logic;
 
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.structure.StructureTemplate;
 import net.minecraft.text.Text;
 import xaero.pac.common.server.api.OpenPACServerAPI;
 import xaero.pac.common.server.parties.party.api.IPartyManagerAPI;
 import xaero.pac.common.server.parties.party.api.IServerPartyAPI;
-
-import java.util.UUID;
 
 public class SkirmishManager {
 
@@ -33,9 +32,14 @@ public class SkirmishManager {
                 endSkirmish(server, EndOfSkirmishType.TIME);
             }
         }
+        if (currentChallenge != null) {
+            if (currentChallenge.expiresAt >= System.currentTimeMillis()) {
+                currentChallenge = null;
+            }
+        }
     }
 
-    public void startSkirmish(SkirmishChallenge challenge) {
+    public void startSkirmish(StructureTemplate oppShip) {
 
     }
 
@@ -96,5 +100,9 @@ public class SkirmishManager {
         if (currentSkirmish != null) {
             currentSkirmish.handlePlayerQuit(server, player);
         }
+    }
+
+    public void addSpectator(ServerPlayerEntity player) {
+        
     }
 }

@@ -15,6 +15,7 @@ import net.minecraft.structure.StructureTemplate;
 import net.minecraft.structure.StructureTemplateManager;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
+import org.valkyrienskies.core.api.ships.Ship;
 import xaero.pac.common.server.api.OpenPACServerAPI;
 import xaero.pac.common.server.parties.party.api.IPartyManagerAPI;
 import xaero.pac.common.server.parties.party.api.IServerPartyAPI;
@@ -103,7 +104,7 @@ public class ChallengeTeamWagerExe {
 
         cc.modify(-wager);
 
-        SkirmishChallenge challenge = new SkirmishChallenge(party.getId(), oppParty.getId(), wager);
+        SkirmishChallenge challenge = new SkirmishChallenge(party.getId(), ship.get(), oppParty.getId(), wager);
         sm.setCurrentChallenge(challenge);
 
         String chPartyName = pc.getLoadedConfig(player.getUuid()).getEffective(PlayerConfigOptions.PARTY_NAME);
