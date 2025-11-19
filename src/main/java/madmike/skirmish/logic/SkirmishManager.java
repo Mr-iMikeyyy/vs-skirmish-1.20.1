@@ -17,6 +17,8 @@ public class SkirmishManager {
 
     private SkirmishManager() {}
 
+    public SkirmishChallenge getCurrentChallenge() { return currentChallenge; }
+
     public Skirmish getCurrentSkirmish() {
         return currentSkirmish;
     }
@@ -56,5 +58,10 @@ public class SkirmishManager {
         }
 
         return true;
+    }
+
+
+    public void setCurrentChallenge(SkirmishChallenge challenge) {
+        this.currentChallenge = challenge;
     }
 }

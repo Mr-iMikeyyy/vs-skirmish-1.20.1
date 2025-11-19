@@ -6,20 +6,34 @@ import java.util.UUID;
 
 public class SkirmishChallenge {
     UUID chPartyId;
-    UUID chShipId;
 
     UUID oppPartyId;
-    UUID oppShipId;
 
-    int wager;
+    long wager;
     long expiresAt;
 
-    public SkirmishChallenge(UUID chPartyId, UUID chShipId, UUID oppPartyId, UUID oppShipId, int wager) {
+    public SkirmishChallenge(UUID chPartyId, UUID oppPartyId, long wager) {
         this.chPartyId = chPartyId;
-        this.chShipId = chShipId;
         this.oppPartyId = oppPartyId;
-        this.oppShipId = oppShipId;
         this.wager = wager;
-        this.expiresAt = (SkirmishConfig.skirmishChallengeMaxTime * 10000L) + System.currentTimeMillis();
+        this.expiresAt = (SkirmishConfig.skirmishChallengeMaxTime * 1000L) + System.currentTimeMillis();
     }
+
+    public UUID getChPartyId() {
+        return chPartyId;
+    }
+
+    public UUID getOppPartyId() {
+        return oppPartyId;
+    }
+
+    public long getWager() {
+        return wager;
+    }
+
+    public long getExpiresAt() {
+        return expiresAt;
+    }
+
+
 }
