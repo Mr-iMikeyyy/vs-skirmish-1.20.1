@@ -7,12 +7,14 @@ import g_mungus.vlib.v2.api.extension.ShipExtKt;
 import madmike.skirmish.VSSkirmish;
 import madmike.skirmish.component.SkirmishComponents;
 import madmike.skirmish.feature.blocks.SkirmishSpawnBlock;
+import net.minecraft.registry.RegistryKey;
 import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.world.World;
 import org.joml.Vector3d;
 import org.valkyrienskies.core.api.ships.ServerShip;
 import org.valkyrienskies.core.api.ships.Ship;
@@ -45,6 +47,8 @@ public class SaveExe {
             player.sendMessage(Text.literal("§cYou are not standing on a ship or there was an error saving it"), false);
             return 0;
         }
+
+        World shipYard = ctx.getSource().getServer().getWorld(RegistryKey.of() ship.getChunkClaimDimension());
 
         AtomicBoolean found = new AtomicBoolean(false);
         BlockPos[] foundPos = new BlockPos[1]; // mutable container
