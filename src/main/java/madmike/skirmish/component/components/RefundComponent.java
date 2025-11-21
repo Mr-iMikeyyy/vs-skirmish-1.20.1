@@ -1,8 +1,7 @@
-package madmike.skirmish.component.components.scoreboard;
+package madmike.skirmish.component.components;
 
 import com.glisco.numismaticoverhaul.ModComponents;
 import dev.onyxstudios.cca.api.v3.component.ComponentV3;
-import madmike.skirmish.logic.SkirmishChallenge;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtElement;
 import net.minecraft.nbt.NbtList;
@@ -33,21 +32,20 @@ public class RefundComponent implements ComponentV3 {
      * Refunds wager amounts to both players.
      * If a player is offline, the refund is stored until next login.
      */
-    public void refundChallenge(MinecraftServer server, SkirmishChallenge challenge) {
-        PlayerManager pm = server.getPlayerManager();
+//    public void refundChallenge(MinecraftServer server, SkirmishChallenge challenge) {
+//        PlayerManager pm = server.getPlayerManager();
+//
+//        refundPlayer(pm, challenge.challengerId, challenge.wager);
+//        refundPlayer(pm, challenge.opponentId, challenge.wager);
+//    }
 
-        refundPlayer(pm, challenge.challengerId, challenge.wager);
-        refundPlayer(pm, challenge.opponentId, challenge.wager);
-    }
-
-    public void refundPlayer(PlayerManager pm, UUID playerId, int wager) {
+    public void refundPlayer(PlayerManager pm, UUID playerId, long wager) {
         ServerPlayerEntity player = pm.getPlayer(playerId);
-        long amount = wager * 10000L;
 
         if (player != null) {
-            ModComponents.CURRENCY.get(player).modify(amount);
+            ModComponents.CURRENCY.get(player).modify(wager);
         } else {
-            storedRefunds.merge(playerId, amount, Long::sum); // accumulate if multiple refunds stack
+            storedRefunds.merge(playerId, wager, Long::sum); // accumulate if multiple refunds stack
         }
     }
 

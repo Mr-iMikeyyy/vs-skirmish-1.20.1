@@ -4,8 +4,10 @@ import com.glisco.numismaticoverhaul.ModComponents;
 import com.glisco.numismaticoverhaul.currency.CurrencyComponent;
 import com.mojang.brigadier.context.CommandContext;
 import madmike.skirmish.VSSkirmish;
+import madmike.skirmish.component.SkirmishComponents;
 import madmike.skirmish.logic.SkirmishChallenge;
 import madmike.skirmish.logic.SkirmishManager;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.structure.StructureTemplate;
@@ -59,11 +61,7 @@ public class AcceptExe {
 
         cc.modify(-wager);
 
-        SkirmishManager.INSTANCE.startSkirmish(ship.get());
-
-
-        // TODO: Accept pending challenge
-        player.sendMessage(Text.literal("§aYou accepted the latest skirmish challenge."));
+        SkirmishManager.INSTANCE.startSkirmish(ctx.getSource().getServer(), challenge);
         return 1;
     }
 }

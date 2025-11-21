@@ -26,7 +26,7 @@ public class SpectateExe {
             return 0;
         }
 
-        SkirmishManager.INSTANCE.addSpectator(player);
+        skirmish.addSpectator(ctx.getSource().getServer(), player);
         return 1;
     }
 }

@@ -3,11 +3,9 @@ package madmike.skirmish.command;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
-import madmike.skirmish.command.exe.AcceptExe;
-import madmike.skirmish.command.exe.ChallengeTeamWagerExe;
-import madmike.skirmish.command.exe.SaveExe;
-import madmike.skirmish.command.exe.SpectateExe;
+import madmike.skirmish.command.exe.*;
 import madmike.skirmish.command.req.PartyLeaderReq;
+import madmike.skirmish.command.req.PartyReq;
 import madmike.skirmish.command.sug.ChallengeTeamSug;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.minecraft.server.command.ServerCommandSource;
@@ -38,6 +36,8 @@ public class SkirmishCommand {
                                 §e/skirmish cancel §7- Cancel your outgoing challenge
                                 §e/skirmish deny §7- Deny an incoming challenge
                                 §e/skirmish save §7- Save the ship you are standing on as your party's ship
+                                §e/skirmish turnOn §7- Turn on receiving/sending challenges
+                                §e/skirmish turnOff §7- Turn off receiving/sending challenges
                                 
                                 §6--- Players ---
                                 
@@ -108,9 +108,27 @@ public class SkirmishCommand {
                     )
 
                     // ============================================================
+                    // /skirmish turn on
+                    // ============================================================
+                    .then(literal("turnOn")
+                            .requires(PartyLeaderReq::reqPartyLeader)
+                            .executes(TurnOnExe::exeTurnOn)
+                    )
+
+                    // ============================================================
+                    // /skirmish turn off
+                    // ============================================================
+                    .then(literal("turnOff")
+                            .requires(PartyLeaderReq::reqPartyLeader)
+                            .executes(TurnOffExe::exeTurnOff)
+                    )
+
+                    // ============================================================
                     // /skirmish stats
                     // ============================================================
-                    .then(literal("stats").executes(ctx -> {
+                    .then(literal("stats")
+                            .requires(PartyReq::reqParty)
+                            .executes(ctx -> {
                         ServerPlayerEntity player = ctx.getSource().getPlayer();
                         // TODO: Show player's team skirmish stats
                         player.sendMessage(Text.literal("§6[Skirmish Stats] §7Coming soon..."));
@@ -120,7 +138,8 @@ public class SkirmishCommand {
                     // ============================================================
                     // /skirmish top
                     // ============================================================
-                    .then(literal("top").executes(ctx -> {
+                    .then(literal("top")
+                            .executes(ctx -> {
                         ServerPlayerEntity player = ctx.getSource().getPlayer();
                         // TODO: Display leaderboard (most wins, ships sunk, gold earned)
                         player.sendMessage(Text.literal("§6[Skirmish Top] §7Leaderboard coming soon..."));

@@ -1,17 +1,20 @@
 package madmike.skirmish.event;
 
-import madmike.skirmish.event.events.AllowDeathEvent;
-import madmike.skirmish.event.events.EndServerTickEvent;
-import madmike.skirmish.event.events.JoinEvent;
+import madmike.skirmish.event.events.*;
 
 public class SkirmishEvents {
     public static void register() {
 
         AllowDeathEvent.register();
 
+        DisconnectEvent.register();
+
         EndServerTickEvent.register();
+
+        EntitySpawnEvent.register();
 
         JoinEvent.register();
 
+        ShipHelmBlockDestroyedEvent.register();
     }
 }

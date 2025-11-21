@@ -68,7 +68,7 @@ dependencies {
 
 	modImplementation("maven.modrinth:open-parties-and-claims:fabric-1.20.1-0.24.0")
 
-	modImplementation("maven.modrinth:vlib:fanL674x")
+	modImplementation(files("libs/vlib-1.20.1-0.1.0-pre0+fabric.jar"))
 
 	modApi("org.valkyrienskies:valkyrienskies-120-fabric:${vs2_version}") {
 		exclude group: 'com.simibubi', module: ''

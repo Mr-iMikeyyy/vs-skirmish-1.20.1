@@ -6,6 +6,7 @@ import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import madmike.skirmish.VSSkirmish;
+import madmike.skirmish.component.SkirmishComponents;
 import madmike.skirmish.logic.SkirmishChallenge;
 import madmike.skirmish.logic.SkirmishManager;
 import net.minecraft.server.MinecraftServer;
@@ -43,7 +44,6 @@ public class ChallengeTeamWagerExe {
 
         MinecraftServer server = ctx.getSource().getServer();
         OpenPACServerAPI api = OpenPACServerAPI.get(server);
-
         IPartyManagerAPI pm = api.getPartyManager();
 
         IServerPartyAPI party = pm.getPartyByOwner(player.getUuid());
@@ -52,17 +52,17 @@ public class ChallengeTeamWagerExe {
             return 0;
         }
 
+        if (!SkirmishComponents.TOGGLE.get(server.getScoreboard()).isEnabled(party.getId())) {
+            player.sendMessage(Text.literal("Your party has not yet enabled skirmishes"));
+            return 0;
+        }
 
         StructureTemplateManager stm = player.getServerWorld().getStructureTemplateManager();
-        Optional<StructureTemplate> ship = stm.getTemplate(new Identifier(VSSkirmish.MOD_ID, "ships/" + party.getId()));
-
+        Optional<StructureTemplate> ship = stm.getTemplate(new Identifier(VSSkirmish.MOD_ID, "/ships/" + party.getId()));
         if (ship.isEmpty()) {
             player.sendMessage(Text.literal("Your party has no saved ship"));
             return 0;
         }
-
-
-        IServerPartyAPI oppParty = null;
 
         String teamName = StringArgumentType.getString(ctx, "team");
 
@@ -70,6 +70,8 @@ public class ChallengeTeamWagerExe {
 
         Set<UUID> ownerIds = new HashSet<>();
         pm.getAllStream().forEach(t -> ownerIds.add(t.getOwner().getUUID()));
+
+        IServerPartyAPI oppParty = null;
         for (UUID id : ownerIds) {
             ServerPlayerEntity otherPlayer = server.getPlayerManager().getPlayer(id);
             if (otherPlayer != null) {
@@ -85,8 +87,18 @@ public class ChallengeTeamWagerExe {
             return 0;
         }
 
-        Optional<StructureTemplate> oppShip = stm.getTemplate(new Identifier(VSSkirmish.MOD_ID, "ships/" + oppParty.getId()));
+        ServerPlayerEntity oppLeader = server.getPlayerManager().getPlayer(oppParty.getOwner().getUUID());
+        if (oppLeader == null) {
+            player.sendMessage(Text.literal("Opponent team leader is offline"));
+            return 0;
+        }
 
+        if (!SkirmishComponents.TOGGLE.get(server.getScoreboard()).isEnabled(oppParty.getId())) {
+            player.sendMessage(Text.literal("Opponent party has not yet enabled skirmishes"));
+            return 0;
+        }
+
+        Optional<StructureTemplate> oppShip = stm.getTemplate(new Identifier(VSSkirmish.MOD_ID, "/ships/" + oppParty.getId()));
         if (oppShip.isEmpty()) {
             player.sendMessage(Text.literal("Could not find a ship for the other party"));
             return 0;
@@ -104,7 +116,7 @@ public class ChallengeTeamWagerExe {
 
         cc.modify(-wager);
 
-        SkirmishChallenge challenge = new SkirmishChallenge(party.getId(), ship.get(), oppParty.getId(), wager);
+        SkirmishChallenge challenge = new SkirmishChallenge(party.getId(), player.getUuid(), ship.get(), oppParty.getId(), oppLeader.getUuid(), oppShip.get(),  wager);
         sm.setCurrentChallenge(challenge);
 
         String chPartyName = pc.getLoadedConfig(player.getUuid()).getEffective(PlayerConfigOptions.PARTY_NAME);
