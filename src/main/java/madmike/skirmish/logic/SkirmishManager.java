@@ -194,10 +194,27 @@ public class SkirmishManager {
     }
 
     public void endSkirmish(MinecraftServer server, EndOfSkirmishType type) {
+        ServerWorld skirmishDim = server.getWorld(SkirmishDimension.SKIRMISH_LEVEL_KEY);
+        if (skirmishDim == null) {
+            return;
+        }
+
         // award winner
         // record stats
+        StatsComponent sc = SkirmishComponents.STATS.get(server.getScoreboard());
+
         switch (type) {
-            //TODO
+            case CHALLENGERS_WIN_KILLS -> {
+
+            }
+            case OPPONENTS_WIN_KILLS -> {
+            }
+            case CHALLENGERS_WIN_SHIP -> {
+            }
+            case OPPONENTS_WIN_SHIP -> {
+            }
+            case TIME -> {
+            }
         }
 
         // tp back
@@ -218,9 +235,11 @@ public class SkirmishManager {
 
 
         //kill ships
-        List<Ship> ships = VSGameUtilsKt.getAllShips(server.getWorld(SkirmishDimension.SKIRMISH_LEVEL_KEY)).stream().toList();
+        List<Ship> ships = VSGameUtilsKt.getAllShips(skirmishDim).stream().toList();
         for (Ship ship : ships) {
-            VLibAPI.discardShip(ship, server.getWorld(SkirmishDimension.SKIRMISH_LEVEL_KEY));
+            if (ship instanceof ServerShip serverShip) {
+                VLibAPI.discardShip(serverShip, skirmishDim);
+            }
         }
 
 
