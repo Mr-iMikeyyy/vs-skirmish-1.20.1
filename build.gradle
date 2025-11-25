@@ -61,7 +61,6 @@ dependencies {
 	modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
 
 	modImplementation("dev.onyxstudios.cardinal-components-api:cardinal-components-base:5.2.3")
-	modImplementation("dev.onyxstudios.cardinal-components-api:cardinal-components-entity:5.2.3") // for players
 	modImplementation("dev.onyxstudios.cardinal-components-api:cardinal-components-scoreboard:5.2.3") // for scoreboard/global
 
 	modImplementation("maven.modrinth:numismatic-overhaul:0.2.14+1.20")

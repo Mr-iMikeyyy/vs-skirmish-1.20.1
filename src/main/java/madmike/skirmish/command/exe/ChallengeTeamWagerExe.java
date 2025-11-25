@@ -116,7 +116,7 @@ public class ChallengeTeamWagerExe {
 
         cc.modify(-wager);
 
-        SkirmishChallenge challenge = new SkirmishChallenge(party.getId(), player.getUuid(), ship.get(), oppParty.getId(), oppLeader.getUuid(), oppShip.get(),  wager);
+        SkirmishChallenge challenge = new SkirmishChallenge(party.getId(), player.getUuid(), ship.get(), oppParty.getId(), oppLeader.getUuid(), oppShip.get(), wagerInt);
         sm.setCurrentChallenge(challenge);
 
         String chPartyName = pc.getLoadedConfig(player.getUuid()).getEffective(PlayerConfigOptions.PARTY_NAME);

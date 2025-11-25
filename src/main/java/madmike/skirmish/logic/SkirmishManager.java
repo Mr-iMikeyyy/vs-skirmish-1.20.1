@@ -1,10 +1,14 @@
 package madmike.skirmish.logic;
 
+import com.glisco.numismaticoverhaul.ModComponents;
+import com.glisco.numismaticoverhaul.currency.CurrencyComponent;
 import g_mungus.vlib.v2.api.VLibAPI;
 import g_mungus.vlib.v2.api.extension.ShipExtKt;
 import madmike.skirmish.component.SkirmishComponents;
 import madmike.skirmish.component.components.InventoryComponent;
+import madmike.skirmish.component.components.RefundComponent;
 import madmike.skirmish.component.components.ReturnPointComponent;
+import madmike.skirmish.component.components.StatsComponent;
 import madmike.skirmish.dimension.SkirmishDimension;
 import madmike.skirmish.feature.blocks.SkirmishSpawnBlock;
 import net.minecraft.block.BlockState;
@@ -71,6 +75,9 @@ public class SkirmishManager {
         //spawn ships
         ServerWorld skirmishDim = server.getWorld(SkirmishDimension.SKIRMISH_LEVEL_KEY);
         if (skirmishDim == null) {
+            challenge.broadcastMsg(server, "Error getting skirmish dimension, cancelling skirmish");
+            SkirmishComponents.REFUNDS.get(server.getScoreboard()).refundChallenge(server, challenge);
+            currentChallenge = null;
             return;
         }
 
@@ -181,7 +188,7 @@ public class SkirmishManager {
         });
 
         //create skirmish
-        currentSkirmish = new Skirmish(challengerIds, chParty.getId(), opponentIds, oppParty.getId(), chShip.getId(), oppShip.getId());
+        currentSkirmish = new Skirmish(challengerIds, chParty.getId(), challenge.getChLeaderId(), opponentIds, oppParty.getId(), challenge.getOppLeaderId(), chShip.getId(), oppShip.getId(), challenge.getWager());
         //broadcast msg to all players
         challenge.broadcastMsg(server, "Skirmish Started!");
         server.getPlayerManager().getPlayerList().forEach( player -> {
@@ -202,18 +209,37 @@ public class SkirmishManager {
         // award winner
         // record stats
         StatsComponent sc = SkirmishComponents.STATS.get(server.getScoreboard());
+        RefundComponent rc = SkirmishComponents.REFUNDS.get(server.getScoreboard());
 
         switch (type) {
             case CHALLENGERS_WIN_KILLS -> {
-
+                sc.setPartySkirmishStats(currentSkirmish.getChPartyId(), 1, 0, currentSkirmish.getWager(), 0, 0, 0);
+                sc.setPartySkirmishStats(currentSkirmish.getOppPartyId(), 0, 1, 0, currentSkirmish.getWager(), 0, 0);
+                rc.refundPlayer(server, currentSkirmish.getChLeaderId(), currentSkirmish.getWager() * 20000L);
+                currentSkirmish.broadcastMsg(server, "Challengers won by kills!");
             }
             case OPPONENTS_WIN_KILLS -> {
+                sc.setPartySkirmishStats(currentSkirmish.getChPartyId(), 0, 1, 0, currentSkirmish.getWager(), 0, 0);
+                sc.setPartySkirmishStats(currentSkirmish.getOppPartyId(), 1, 0, currentSkirmish.getWager(), 0, 0, 0);
+                rc.refundPlayer(server, currentSkirmish.getOppLeaderId(), currentSkirmish.getWager() * 20000L);
+                currentSkirmish.broadcastMsg(server, "Opponents won by kills!");
             }
             case CHALLENGERS_WIN_SHIP -> {
+                sc.setPartySkirmishStats(currentSkirmish.getChPartyId(), 1, 0, currentSkirmish.getWager(), 0, 0, 1);
+                sc.setPartySkirmishStats(currentSkirmish.getOppPartyId(), 0, 1, 0, currentSkirmish.getWager(), 1, 0);
+                rc.refundPlayer(server, currentSkirmish.getChLeaderId(), currentSkirmish.getWager() * 20000L);
+                currentSkirmish.broadcastMsg(server, "Challengers won by sinking the ship!");
             }
             case OPPONENTS_WIN_SHIP -> {
+                sc.setPartySkirmishStats(currentSkirmish.getChPartyId(), 1, 0, currentSkirmish.getWager(), 0, 1, 0);
+                sc.setPartySkirmishStats(currentSkirmish.getOppPartyId(), 0, 1, 0, currentSkirmish.getWager(), 0, 1);
+                rc.refundPlayer(server, currentSkirmish.getOppLeaderId(), currentSkirmish.getWager() * 20000L);
+                currentSkirmish.broadcastMsg(server, "Opponents won by sinking the ship!");
             }
             case TIME -> {
+                rc.refundPlayer(server, currentSkirmish.getChLeaderId(), currentChallenge.getWager());
+                rc.refundPlayer(server, currentSkirmish.getOppLeaderId(), currentChallenge.getWager());
+                currentSkirmish.broadcastMsg(server, "The time ran out on the skirmish!");
             }
         }
 
@@ -223,13 +249,13 @@ public class SkirmishManager {
         Set<UUID> players = currentSkirmish.getAllInvolvedPlayers();
         PlayerManager pm = server.getPlayerManager();
         InventoryComponent ic = SkirmishComponents.INVENTORY.get(server.getScoreboard());
-        ReturnPointComponent rc = SkirmishComponents.RETURN_POINTS.get(server.getScoreboard());
+        ReturnPointComponent rpc = SkirmishComponents.RETURN_POINTS.get(server.getScoreboard());
         for (UUID id : players) {
             ServerPlayerEntity player = pm.getPlayer(id);
             if (player != null) {
                 player.changeGameMode(GameMode.SURVIVAL);
                 ic.restoreInventory(player);
-                rc.tpBack(server, player);
+                rpc.tpBack(server, player);
             }
         }
 
@@ -268,6 +294,8 @@ public class SkirmishManager {
         } catch (IOException e) {
             e.printStackTrace();
         }
+
+        currentSkirmish = null;
     }
 
     public boolean hasChallengeOrSkirmish() {

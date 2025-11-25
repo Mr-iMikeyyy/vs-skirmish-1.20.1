@@ -43,7 +43,12 @@
 	},
 	"custom": {
 		"cardinal-components": [
-			"vs-skirmish:names"
+			"vs-skirmish:inventory",
+			"vs-skirmish:names",
+			"vs-skirmish:refunds",
+			"vs-skirmish:return_points",
+			"vs-skirmish:stats",
+			"vs-skirmish:toggle"
 		]
 	}
 }

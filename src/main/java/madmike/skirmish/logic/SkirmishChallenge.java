@@ -21,10 +21,10 @@ public class SkirmishChallenge {
     private final UUID oppLeaderId;
     private final StructureTemplate oppShipTemplate;
 
-    private final long wager;
+    private final int wager;
     private final long expiresAt;
 
-    public SkirmishChallenge(UUID chPartyId, UUID chLeaderId, StructureTemplate chShipTemplate, UUID oppPartyId, UUID oppLeaderId, StructureTemplate oppShip, long wager) {
+    public SkirmishChallenge(UUID chPartyId, UUID chLeaderId, StructureTemplate chShipTemplate, UUID oppPartyId, UUID oppLeaderId, StructureTemplate oppShip, int wager) {
         this.chPartyId = chPartyId;
         this.chLeaderId = chLeaderId;
         this.chShipTemplate = chShipTemplate;
@@ -35,6 +35,14 @@ public class SkirmishChallenge {
 
         this.wager = wager;
         this.expiresAt = (SkirmishConfig.skirmishChallengeMaxTime * 1000L) + System.currentTimeMillis();
+    }
+
+    public UUID getChLeaderId() {
+        return chLeaderId;
+    }
+
+    public UUID getOppLeaderId() {
+        return oppLeaderId;
     }
 
     public UUID getChPartyId() {
@@ -49,7 +57,7 @@ public class SkirmishChallenge {
 
     public StructureTemplate getOppShipTemplate() { return oppShipTemplate; }
 
-    public long getWager() {
+    public int getWager() {
         return wager;
     }
 

@@ -21,28 +21,32 @@ public class Skirmish {
 
     private final Set<UUID> challengers;
     private final UUID chPartyId;
+    private final UUID chLeaderId;
 
     private final Set<UUID> opponents;
-
     private final UUID oppPartyId;
+    private final UUID oppLeaderId;
 
     private final Set<UUID> spectators;
-
-
 
     private final long chShipId;
 
     private final long oppShipId;
 
+    private final int wager;
+
     private final long expiresAt;
 
-    public Skirmish(Set<UUID> challengers, UUID chPartyId, Set<UUID> opponents, UUID oppPartyId, long chShipId, long oppShipId) {
+    public Skirmish(Set<UUID> challengers, UUID chPartyId, UUID chLeaderId, Set<UUID> opponents, UUID oppPartyId, UUID oppLeaderId, long chShipId, long oppShipId, int wager) {
         this.challengers = challengers;
         this.chPartyId = chPartyId;
+        this.chLeaderId = chLeaderId;
         this.opponents = opponents;
         this.oppPartyId = oppPartyId;
+        this.oppLeaderId = oppLeaderId;
         this.chShipId = chShipId;
         this.oppShipId = oppShipId;
+        this.wager = wager;
         this.expiresAt = (SkirmishConfig.skirmishMaxTime * 1000L) + System.currentTimeMillis();
         this.spectators = new HashSet<>();
     }
@@ -55,12 +59,24 @@ public class Skirmish {
         return chPartyId;
     }
 
+    public UUID getOppLeaderId() {
+        return oppLeaderId;
+    }
+
+    public UUID getChLeaderId() {
+        return chLeaderId;
+    }
+
     public Set<UUID> getAllInvolvedPlayers() {
         Set<UUID> players = new HashSet<>();
         players.addAll(spectators);
         players.addAll(opponents);
         players.addAll(challengers);
         return players;
+    }
+
+    public int getWager() {
+        return wager;
     }
 
     public boolean isExpired() {
@@ -147,5 +163,21 @@ public class Skirmish {
          else {
              player.sendMessage(Text.literal("Error trying to spectate"));
          }
+    }
+
+    public void broadcastMsg(MinecraftServer server, String msg) {
+        IPartyManagerAPI pm = OpenPACServerAPI.get(server).getPartyManager();
+        IServerPartyAPI chParty = pm.getPartyById(chPartyId);
+        if (chParty != null) {
+            chParty.getOnlineMemberStream().forEach(p -> {
+                p.sendMessage(Text.literal(msg));
+            });
+        }
+        IServerPartyAPI oppParty = pm.getPartyById(oppPartyId);
+        if (oppParty != null) {
+            oppParty.getOnlineMemberStream().forEach(p -> {
+                p.sendMessage(Text.literal(msg));
+            });
+        }
     }
 }
