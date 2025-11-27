@@ -25,17 +25,25 @@ public class SkirmishBlocks {
     }
 
     private static Block registerBlock(String name, Block block) {
-        Identifier id = new Identifier(VSSkirmish.MOD_ID, name);
+        try {
+            Identifier id = new Identifier(VSSkirmish.MOD_ID, name);
 
-        // Register the block item
-        BlockItem blockItem = new BlockItem(block, new FabricItemSettings());
-        Registry.register(Registries.ITEM, id, blockItem);
+            BlockItem blockItem = new BlockItem(block, new FabricItemSettings());
+            Registry.register(Registries.ITEM, id, blockItem);
 
-        // Register the block itself
-        return Registry.register(Registries.BLOCK, id, block);
+            VSSkirmish.LOG.info("Registered block: {}", name);
+            return Registry.register(Registries.BLOCK, id, block);
+        } catch (Exception e) {
+            VSSkirmish.LOG.error("Failed to register block: {}", name, e);
+            throw e;
+        }
     }
 
     public static void init() {
-        // Called from mod initializer to force class loading & registration
+        try {
+            VSSkirmish.LOG.info("Initializing Skirmish blocks");
+        } catch (Exception e) {
+            VSSkirmish.LOG.error("Failed to initialize Skirmish blocks", e);
+        }
     }
 }
