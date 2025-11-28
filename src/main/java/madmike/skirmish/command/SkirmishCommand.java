@@ -3,7 +3,6 @@ package madmike.skirmish.command;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
-import madmike.skirmish.VSSkirmish;
 import madmike.skirmish.command.exe.*;
 import madmike.skirmish.command.req.PartyLeaderReq;
 import madmike.skirmish.command.req.PartyReq;
@@ -19,9 +18,7 @@ import static net.minecraft.server.command.CommandManager.literal;
 public class SkirmishCommand {
 
     public static void register() {
-        try {
-            VSSkirmish.LOG.info("Registering Skirmish commands");
-            CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
+        CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
 
             LiteralArgumentBuilder<ServerCommandSource> skirmishCommand = literal("skirmish")
                     // Base help command
@@ -157,12 +154,9 @@ public class SkirmishCommand {
                     );
 
             dispatcher.register(skirmishCommand);
-            VSSkirmish.LOG.info("Skirmish commands registered successfully");
+
 
         });
-        } catch (Exception e) {
-            VSSkirmish.LOG.error("Failed to register Skirmish commands", e);
-        }
     }
 
 

@@ -1,6 +1,5 @@
 package madmike.skirmish.mixin;
 
-import madmike.skirmish.VSSkirmish;
 import madmike.skirmish.event.events.ShipHelmDestroyedCallback;
 import net.minecraft.block.BlockState;
 import net.minecraft.util.math.BlockPos;
@@ -23,16 +22,11 @@ public class ShipHelmBlockMixin {
     private void onHelmRemoved(
             BlockState state, World level, BlockPos pos, BlockState newState, boolean isMoving, CallbackInfo ci
     ) {
-        try {
-            if (state.getBlock() == newState.getBlock()) return;
+        if (state.getBlock() == newState.getBlock()) return;
 
-            Ship ship = VSGameUtilsKt.getShipManagingPos(level, pos);
-            VSSkirmish.LOG.info("Ship helm destroyed at position: {}", pos);
+        Ship ship = VSGameUtilsKt.getShipManagingPos(level, pos);
 
-            ShipHelmDestroyedCallback.EVENT.invoker()
-                    .onHelmDestroyed(level, pos, state, null, ship);
-        } catch (Exception e) {
-            VSSkirmish.LOG.error("Error handling helm destruction at position: {}", pos, e);
-        }
+        ShipHelmDestroyedCallback.EVENT.invoker()
+                .onHelmDestroyed(level, pos, state, null, ship);
     }
 }
