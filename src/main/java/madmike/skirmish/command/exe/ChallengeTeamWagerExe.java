@@ -29,21 +29,14 @@ import java.util.UUID;
 
 public class ChallengeTeamWagerExe {
     public static int executeChallengeTeamWager(CommandContext<ServerCommandSource> ctx) {
-
-        VSSkirmish.LOGGER.info("[SKIRMISH] ===== /skirmish challenge <team> <wager> executed =====");
-
         ServerPlayerEntity player = ctx.getSource().getPlayer();
         if (player == null) {
-            VSSkirmish.LOGGER.error("[SKIRMISH] ERROR: Command source was not a player.");
             ctx.getSource().sendMessage(Text.literal("You must be a player to use this command"));
             return 0;
         }
 
-        VSSkirmish.LOGGER.info("[SKIRMISH] Player executing command: {}", player.getGameProfile().getName());
-
         SkirmishManager sm = SkirmishManager.INSTANCE;
         if (sm.hasChallengeOrSkirmish()) {
-            VSSkirmish.LOGGER.warn("[SKIRMISH] A skirmish or challenge is already active. Rejecting request.");
             player.sendMessage(Text.literal("There is already a skirmish or pending challenge, please try again later."));
             return 0;
         }
@@ -54,44 +47,30 @@ public class ChallengeTeamWagerExe {
 
         IServerPartyAPI party = pm.getPartyByOwner(player.getUuid());
         if (party == null) {
-            VSSkirmish.LOGGER.warn("[SKIRMISH] Player {} attempted to challenge but is not a party leader.", player.getName().getString());
             player.sendMessage(Text.literal("You must be a party leader to use this command"));
             return 0;
         }
 
-        VSSkirmish.LOGGER.info("[SKIRMISH] Challenger Party ID: {}", party.getId());
-
         if (!SkirmishComponents.TOGGLE.get(server.getScoreboard()).isEnabled(party.getId())) {
-            VSSkirmish.LOGGER.warn("[SKIRMISH] Challenger party {} has not enabled skirmishes.", party.getId());
             player.sendMessage(Text.literal("Your party has not yet enabled skirmishes"));
             return 0;
         }
 
         StructureTemplateManager stm = player.getServerWorld().getStructureTemplateManager();
-        Identifier selfShipID = new Identifier(VSSkirmish.MOD_ID, "ships/" + party.getId());
-        Optional<StructureTemplate> ship = stm.getTemplate(selfShipID);
-
-        VSSkirmish.LOGGER.info("[SKIRMISH] Looking for challenger ship template: {}", selfShipID);
-
+        Optional<StructureTemplate> ship = stm.getTemplate(new Identifier(VSSkirmish.MOD_ID, "ships/" + party.getId()));
         if (ship.isEmpty()) {
-            VSSkirmish.LOGGER.warn("[SKIRMISH] No saved ship found for challenger party {}", party.getId());
             player.sendMessage(Text.literal("Your party has no saved ship"));
             return 0;
         }
 
         String teamName = StringArgumentType.getString(ctx, "team");
-        VSSkirmish.LOGGER.info("[SKIRMISH] Target team name provided: {}", teamName);
 
         IPlayerConfigManagerAPI pc = api.getPlayerConfigs();
 
-        // Collect all party owners
         Set<UUID> ownerIds = new HashSet<>();
         pm.getAllStream().forEach(t -> ownerIds.add(t.getOwner().getUUID()));
 
-        VSSkirmish.LOGGER.info("[SKIRMISH] Scanning {} party owners for matching team name...", ownerIds.size());
-
         IServerPartyAPI oppParty = null;
-
         for (UUID id : ownerIds) {
             ServerPlayerEntity otherPlayer = server.getPlayerManager().getPlayer(id);
             if (otherPlayer != null) {
@@ -99,112 +78,61 @@ public class ChallengeTeamWagerExe {
                 if (partyName.isEmpty()) {
                     partyName = party.getDefaultName();
                 }
-
-                VSSkirmish.LOGGER.info("[SKIRMISH] Checking party name '{}' for player {}", partyName, otherPlayer.getGameProfile().getName());
-
-                if (partyName.equals(teamName)) {
+                if (partyName.equals(teamName) ) {
                     oppParty = api.getPartyManager().getPartyByOwner(id);
-                    VSSkirmish.LOGGER.info("[SKIRMISH] Found matching opponent party: {}", oppParty.getId());
                     break;
                 }
             }
         }
 
         if (oppParty == null) {
-            VSSkirmish.LOGGER.error("[SKIRMISH] Could not find opponent party with name '{}'", teamName);
             player.sendMessage(Text.literal("Error finding other team."));
             return 0;
         }
 
         ServerPlayerEntity oppLeader = server.getPlayerManager().getPlayer(oppParty.getOwner().getUUID());
         if (oppLeader == null) {
-            VSSkirmish.LOGGER.warn("[SKIRMISH] Opponent party {} leader is offline.", oppParty.getId());
             player.sendMessage(Text.literal("Opponent team leader is offline"));
             return 0;
         }
 
-        VSSkirmish.LOGGER.info("[SKIRMISH] Opponent Party ID: {}, Leader: {}",
-                oppParty.getId(), oppLeader.getGameProfile().getName());
-
         if (!SkirmishComponents.TOGGLE.get(server.getScoreboard()).isEnabled(oppParty.getId())) {
-            VSSkirmish.LOGGER.warn("[SKIRMISH] Opponent party {} has not enabled skirmishes.", oppParty.getId());
             player.sendMessage(Text.literal("Opponent party has not yet enabled skirmishes"));
             return 0;
         }
 
-        Identifier oppShipID = new Identifier(VSSkirmish.MOD_ID, "ships/" + oppParty.getId());
-        Optional<StructureTemplate> oppShip = stm.getTemplate(oppShipID);
-
-        VSSkirmish.LOGGER.info("[SKIRMISH] Looking for opponent ship template: {}", oppShipID);
-
+        Optional<StructureTemplate> oppShip = stm.getTemplate(new Identifier(VSSkirmish.MOD_ID, "ships/" + oppParty.getId()));
         if (oppShip.isEmpty()) {
-            VSSkirmish.LOGGER.warn("[SKIRMISH] No saved ship found for opponent party {}", oppParty.getId());
             player.sendMessage(Text.literal("Could not find a ship for the other party"));
             return 0;
         }
 
-        // WAGER CHECK
         int wagerInt = IntegerArgumentType.getInteger(ctx, "wager");
         long wager = wagerInt * 10000L;
-
         CurrencyComponent cc = ModComponents.CURRENCY.get(player);
         long wallet = cc.getValue();
 
-        VSSkirmish.LOGGER.info("[SKIRMISH] Wager: {} gold ({} raw)", wagerInt, wager);
-        VSSkirmish.LOGGER.info("[SKIRMISH] Player {} wallet: {}", player.getGameProfile().getName(), wallet);
-
         if (wallet < wager) {
-            VSSkirmish.LOGGER.warn("[SKIRMISH] Player {} does not have enough funds. Needed {}, had {}.",
-                    player.getGameProfile().getName(), wager, wallet);
-
             player.sendMessage(Text.literal("You don't have enough gold in your wallet for that wager!"));
             return 0;
         }
 
         cc.modify(-wager);
-        VSSkirmish.LOGGER.info("[SKIRMISH] Deducted {} from challenger wallet. New balance: {}", wager, cc.getValue());
 
-        // CREATE CHALLENGE
-        VSSkirmish.LOGGER.info("[SKIRMISH] Creating SkirmishChallenge...");
-
-        SkirmishChallenge challenge = new SkirmishChallenge(
-                party.getId(),
-                player.getUuid(),
-                ship.get(),
-                oppParty.getId(),
-                oppLeader.getUuid(),
-                oppShip.get(),
-                wagerInt
-        );
-
+        SkirmishChallenge challenge = new SkirmishChallenge(party.getId(), player.getUuid(), ship.get(), oppParty.getId(), oppLeader.getUuid(), oppShip.get(), wagerInt);
         sm.setCurrentChallenge(challenge);
 
-        VSSkirmish.LOGGER.info("[SKIRMISH] Challenge created successfully.");
-        VSSkirmish.LOGGER.info("[SKIRMISH] Challenger Party = {}", party.getId());
-        VSSkirmish.LOGGER.info("[SKIRMISH] Opponent Party = {}", oppParty.getId());
-        VSSkirmish.LOGGER.info("[SKIRMISH] Wager = {} gold", wagerInt);
-
-        // ALERT OPPONENT PARTY
         String chPartyName = pc.getLoadedConfig(oppLeader.getUuid()).getEffective(PlayerConfigOptions.PARTY_NAME);
         if (chPartyName.isEmpty()) {
             chPartyName = party.getDefaultName();
         }
 
-        VSSkirmish.LOGGER.info("[SKIRMISH] Resolved challenger display name: {}", chPartyName);
-
         String finalChPartyName = chPartyName;
-        oppParty.getOnlineMemberStream().forEach(p ->
-                p.sendMessage(Text.literal("Your party has been challenged to a duel by " + finalChPartyName +
-                        "! With a wager of " + wagerInt + " gold! Party leader, use /skirmish accept or /skirmish deny."))
-        );
+        oppParty.getOnlineMemberStream().forEach(p -> p.sendMessage(Text.literal("Your party has been challenged to a duel by " + finalChPartyName + "! With a wager of " + wagerInt + " gold! Party leader, use /skirmish accept or /skirmish deny.")));
 
-        // ALERT CHALLENGER PARTY
-        party.getOnlineMemberStream().forEach(p ->
-                p.sendMessage(Text.literal("§eChallenging §6" + teamName + "§e to a skirmish..."))
-        );
-
-        VSSkirmish.LOGGER.info("[SKIRMISH] ===== Challenge Successfully Sent =====");
+        party.getOnlineMemberStream().forEach(p -> {
+            p.sendMessage(Text.literal("§eChallenging §6" + teamName + "§e to a skirmish..."));
+        });
         return 1;
     }
-
 }
