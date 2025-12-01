@@ -1,0 +1,59 @@
+package madmike.skirmish.command.exe;
+
+import com.mojang.brigadier.context.CommandContext;
+import madmike.skirmish.logic.SkirmishChallenge;
+import madmike.skirmish.logic.SkirmishManager;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.command.ServerCommandSource;
+import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.text.Text;
+import xaero.pac.common.server.api.OpenPACServerAPI;
+import xaero.pac.common.server.parties.party.api.IPartyManagerAPI;
+import xaero.pac.common.server.parties.party.api.IServerPartyAPI;
+
+public class CancelExe {
+    public static int executeCancel(CommandContext<ServerCommandSource> ctx) {
+
+        ServerPlayerEntity player = ctx.getSource().getPlayer();
+        if (player == null) {
+            ctx.getSource().sendMessage(Text.literal("You must be a player to use this command"));
+            return 0;
+        }
+
+        // ============================================================
+        // PARTY DATA
+        // ============================================================
+        MinecraftServer server = ctx.getSource().getServer();
+        OpenPACServerAPI api = OpenPACServerAPI.get(server);
+        IPartyManagerAPI pm = api.getPartyManager();
+        IServerPartyAPI party = pm.getPartyByOwner(player.getUuid());
+
+        if (party == null) {
+            player.sendMessage(Text.literal("§cYou are not the owner of a party."), false);
+            return 0;
+        }
+
+        // ============================================================
+        // VALIDATE CHALLENGE
+        // ============================================================
+        SkirmishChallenge challenge = SkirmishManager.INSTANCE.getCurrentChallenge();
+
+        if (challenge == null) {
+            player.sendMessage(Text.literal("§cThere are no challenges to cancel"), false);
+            return 0;
+        }
+
+        if (!challenge.getChPartyId().equals(party.getId())) {
+            player.sendMessage(Text.literal("§cYour party is not the challenger of the current challenge"), false);
+            return 0;
+        }
+
+        // ============================================================
+        // DENY CHALLENGE
+        // ============================================================
+
+        challenge.broadcastMsg(server, "The skirmish challenge was cancelled");
+        SkirmishManager.INSTANCE.setCurrentChallenge(null);
+        return 1;
+    }
+}

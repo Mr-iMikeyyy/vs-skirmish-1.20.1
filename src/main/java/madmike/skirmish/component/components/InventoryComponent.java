@@ -118,7 +118,7 @@ public class InventoryComponent implements ComponentV3 {
     // ============================================================
     public void restoreInventory(ServerPlayerEntity player) {
 
-        StoredInventory data = storedInventories.get(player.getUuid());
+        StoredInventory data = storedInventories.remove(player.getUuid());
         if (data == null)
             return; // nothing to restore
 

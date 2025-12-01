@@ -60,7 +60,6 @@ public class SkirmishCommand {
                             .requires(PartyLeaderReq::reqPartyLeader)
                             .then(argument("team", StringArgumentType.string())
                                     .suggests(ChallengeTeamSug::sugChallengeTeam)
-                                    .executes(ChallengeTeamWagerExe::executeChallengeTeamWager)
                                     .then(argument("wager", IntegerArgumentType.integer(0))
                                             .executes(ChallengeTeamWagerExe::executeChallengeTeamWager)
                                     )
@@ -80,24 +79,16 @@ public class SkirmishCommand {
                     // ============================================================
                     .then(literal("cancel")
                             .requires(PartyLeaderReq::reqPartyLeader)
-                            .executes(ctx -> {
-                        ServerPlayerEntity player = ctx.getSource().getPlayer();
-                        // TODO: Cancel outgoing challenge
-                        player.sendMessage(Text.literal("§eYou canceled your outgoing skirmish challenge."));
-                        return 1;
-                    }))
+                            .executes(CancelExe::executeCancel)
+                    )
 
                     // ============================================================
                     // /skirmish deny
                     // ============================================================
                     .then(literal("deny")
                             .requires(PartyLeaderReq::reqPartyLeader)
-                            .executes(ctx -> {
-                                ServerPlayerEntity player = ctx.getSource().getPlayer();
-                                // TODO: Deny incoming challenge
-                                player.sendMessage(Text.literal("§cYou denied the latest skirmish challenge."));
-                                return 1;
-                    }))
+                            .executes(DenyExe::executeDeny)
+                    )
 
                     // ============================================================
                     // /skirmish save
@@ -128,23 +119,13 @@ public class SkirmishCommand {
                     // ============================================================
                     .then(literal("stats")
                             .requires(PartyReq::reqParty)
-                            .executes(ctx -> {
-                        ServerPlayerEntity player = ctx.getSource().getPlayer();
-                        // TODO: Show player's team skirmish stats
-                        player.sendMessage(Text.literal("§6[Skirmish Stats] §7Coming soon..."));
-                        return 1;
-                    }))
+                            .executes(StatsExe::executeStats))
 
                     // ============================================================
                     // /skirmish top
                     // ============================================================
                     .then(literal("top")
-                            .executes(ctx -> {
-                        ServerPlayerEntity player = ctx.getSource().getPlayer();
-                        // TODO: Display leaderboard (most wins, ships sunk, gold earned)
-                        player.sendMessage(Text.literal("§6[Skirmish Top] §7Leaderboard coming soon..."));
-                        return 1;
-                    }))
+                            .executes(TopExe::executeTop))
 
                     // ============================================================
                     // /skirmish spectate
@@ -155,9 +136,6 @@ public class SkirmishCommand {
 
             dispatcher.register(skirmishCommand);
 
-
         });
     }
-
-
 }

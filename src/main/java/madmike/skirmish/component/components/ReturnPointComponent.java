@@ -46,25 +46,12 @@ public class ReturnPointComponent implements ComponentV3 {
         }
     }
 
-    // === Retrieve ===
-
-    public StoredReturn get(UUID playerId) {
-        return returnPoints.get(playerId);
-    }
-
-    public void remove(UUID playerId) {
-        returnPoints.remove(playerId);
-    }
-
-    public boolean has(UUID playerId) {
-        return returnPoints.containsKey(playerId);
-    }
-
-    public void onPlayerLogin(ServerPlayerEntity player) {
+    public void tpPlayerBack(ServerPlayerEntity player) {
         UUID id = player.getUuid();
 
-        if (has(id)) {
-            StoredReturn data = get(id);
+        StoredReturn data = returnPoints.remove(id);
+
+        if (data != null) {
             ServerWorld world = server.getWorld(data.dim());
             if (world != null) {
                 player.teleport(world,
@@ -74,7 +61,6 @@ public class ReturnPointComponent implements ComponentV3 {
                         player.getYaw(), player.getPitch());
                 player.sendMessage(Text.literal("§7You’ve been returned to your previous location."));
             }
-            remove(id); // Clear after restoring
         }
     }
 

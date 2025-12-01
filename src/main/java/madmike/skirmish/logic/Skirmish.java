@@ -89,28 +89,24 @@ public class Skirmish {
 
     public boolean handlePlayerDeath(ServerPlayerEntity player) {
         UUID id = player.getUuid();
-        if (challengers.remove(id)) {
+        if (challengers.remove(id) || opponents.remove(id)) {
+
             player.setHealth(player.getMaxHealth());
+
+            player.changeGameMode(GameMode.SPECTATOR);
+            player.sendMessage(Text.literal("You Died. Spectator Mode Enabled."));
+            spectators.add(id);
+
+            BlockPos currentPos = player.getBlockPos();
+            if (currentPos.getY() < 30) {
+                player.teleport(player.getServerWorld(), currentPos.getX(), 30, currentPos.getZ(), player.getYaw(), player.getPitch());
+            }
+
             if (challengers.isEmpty()) {
                 SkirmishManager.INSTANCE.endSkirmish(player.getServer(), EndOfSkirmishType.OPPONENTS_WIN_KILLS);
             }
-            else {
-                player.changeGameMode(GameMode.SPECTATOR);
-                spectators.add(id);
-                player.sendMessage(Text.literal("You Died. Spectator Mode Enabled."));
-            }
-            return false;
-        }
-
-        if (opponents.remove(id)) {
-            player.setHealth(player.getMaxHealth());
             if (opponents.isEmpty()) {
                 SkirmishManager.INSTANCE.endSkirmish(player.getServer(), EndOfSkirmishType.CHALLENGERS_WIN_KILLS);
-            }
-            else {
-                player.changeGameMode(GameMode.SPECTATOR);
-                spectators.add(id);
-                player.sendMessage(Text.literal("You Died. Spectator Mode Enabled."));
             }
             return false;
         }

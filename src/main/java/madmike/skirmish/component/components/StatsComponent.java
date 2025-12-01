@@ -61,23 +61,6 @@ public class StatsComponent implements ComponentV3 {
         ));
     }
 
-    // Convenience wrappers
-    public void incrementWin(UUID partyId, int wagerGained) {
-        setPartySkirmishStats(partyId, 1, 0, wagerGained, 0, 0, 0);
-    }
-
-    public void incrementLoss(UUID partyId, int wagerLost) {
-        setPartySkirmishStats(partyId, 0, 1, 0, wagerLost, 0, 0);
-    }
-
-    public void incrementShipLost(UUID partyId) {
-        setPartySkirmishStats(partyId, 0, 0, 0, 0, 1, 0);
-    }
-
-    public void incrementShipDestroyed(UUID partyId) {
-        setPartySkirmishStats(partyId, 0, 0, 0, 0, 0, 1);
-    }
-
     // Printable stats
     public Text getPrintableStats(UUID partyId) {
         SkirmishStat stat = stats.get(partyId);

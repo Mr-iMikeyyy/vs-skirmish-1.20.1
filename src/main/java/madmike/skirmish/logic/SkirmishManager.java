@@ -20,6 +20,7 @@ import net.minecraft.text.Text;
 import net.minecraft.util.WorldSavePath;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.GameMode;
+import org.joml.Vector3d;
 import org.valkyrienskies.core.api.ships.ServerShip;
 import org.valkyrienskies.core.api.ships.Ship;
 import org.valkyrienskies.mod.common.VSGameUtilsKt;
@@ -213,6 +214,8 @@ public class SkirmishManager {
         Set<UUID> challengerIds = new HashSet<>();
         VSSkirmish.LOGGER.info("[SKIRMISH] Teleporting Challenger Party: {}", chParty.getId());
 
+        Vector3d chTpPos = chShip.getTransform().getShipToWorld().transformPosition(new Vector3d(chSpawnPos[0].getX(), chSpawnPos[0].getY(), chSpawnPos[0].getZ()));
+
         chParty.getOnlineMemberStream().forEach(player -> {
             challengerIds.add(player.getUuid());
 
@@ -223,12 +226,14 @@ public class SkirmishManager {
             SkirmishComponents.INVENTORY.get(sb).saveInventory(player);
 
             VSSkirmish.LOGGER.info("[SKIRMISH] Teleporting CH {} to {}", player.getGameProfile().getName(), chSpawnPos[0]);
-            player.teleport(skirmishDim, chSpawnPos[0].getX(), chSpawnPos[0].getY(), chSpawnPos[0].getZ(), player.getYaw(), player.getPitch());
+            player.teleport(skirmishDim, chTpPos.x, chTpPos.y, chTpPos.z, player.getYaw(), player.getPitch());
         });
 
         // Opponent teleports
         Set<UUID> opponentIds = new HashSet<>();
         VSSkirmish.LOGGER.info("[SKIRMISH] Teleporting Opponent Party: {}", oppParty.getId());
+
+        Vector3d oppTpPos = oppShip.getTransform().getShipToWorld().transformPosition(new Vector3d(oppSpawnPos[0].getX(), oppSpawnPos[0].getY(), oppSpawnPos[0].getZ()));
 
         oppParty.getOnlineMemberStream().forEach(player -> {
             opponentIds.add(player.getUuid());
@@ -240,7 +245,7 @@ public class SkirmishManager {
             SkirmishComponents.INVENTORY.get(sb).saveInventory(player);
 
             VSSkirmish.LOGGER.info("[SKIRMISH] Teleporting OPP {} to {}", player.getGameProfile().getName(), oppSpawnPos[0]);
-            player.teleport(skirmishDim, oppSpawnPos[0].getX(), oppSpawnPos[0].getY(), oppSpawnPos[0].getZ(), player.getYaw(), player.getPitch());
+            player.teleport(skirmishDim, oppTpPos.x, oppTpPos.y, oppTpPos.z, player.getYaw(), player.getPitch());
         });
 
         // ============================================================
@@ -432,6 +437,7 @@ public class SkirmishManager {
         Path dimPath = server.getSavePath(WorldSavePath.ROOT)
                 .resolve("dimensions")
                 .resolve("vs-skirmish")
+                .resolve("skirmish_dim")
                 .resolve("region");
 
         if (!Files.exists(dimPath)) {

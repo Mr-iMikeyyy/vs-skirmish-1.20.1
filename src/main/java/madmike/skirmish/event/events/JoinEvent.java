@@ -18,7 +18,7 @@ public class JoinEvent {
 
             SkirmishComponents.NAMES.get(server.getScoreboard()).onPlayerLogin(player);
 
-            SkirmishComponents.RETURN_POINTS.get(server.getScoreboard()).onPlayerLogin(player);
+            SkirmishComponents.RETURN_POINTS.get(server.getScoreboard()).tpPlayerBack(player);
 
             SkirmishComponents.REFUNDS.get(server.getScoreboard()).onPlayerLogin(player);
 
