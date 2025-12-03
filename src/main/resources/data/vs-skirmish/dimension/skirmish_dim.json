@@ -8,7 +8,7 @@
       "lakes": false,
       "structure_overrides": [],
       "layers": [
-        { "block": "minecraft:structure_void", "height": 1 },
+        { "block": "minecraft:bedrock", "height": 1 },
         { "block": "minecraft:water", "height": 30 }
       ]
     }

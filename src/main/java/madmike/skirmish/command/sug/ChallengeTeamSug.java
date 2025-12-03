@@ -28,6 +28,11 @@ public class ChallengeTeamSug {
         IPartyManagerAPI pm = api.getPartyManager();
         IPlayerConfigManagerAPI pc = api.getPlayerConfigs();
         Set<UUID> enabledParties = SkirmishComponents.TOGGLE.get(server.getScoreboard()).getEnabledParties();
+        ServerPlayerEntity player = src.getSource().getPlayer();
+        if (player == null) {
+            return builder.buildFuture();
+        }
+        String playersPartyName = pc.getLoadedConfig(src.getSource().getPlayer().getUuid()).getEffective(PlayerConfigOptions.PARTY_NAME);
 
         for (UUID id : enabledParties) {
 
@@ -43,8 +48,8 @@ public class ChallengeTeamSug {
                 continue;
             }
             String partyName = pc.getLoadedConfig(ownerId).getEffective(PlayerConfigOptions.PARTY_NAME);
-            if (partyName.isEmpty()) {
-                partyName = party.getDefaultName();
+            if (partyName.equals(playersPartyName)) {
+                continue;
             }
 
             builder.suggest(partyName);

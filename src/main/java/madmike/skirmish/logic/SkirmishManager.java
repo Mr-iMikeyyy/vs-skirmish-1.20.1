@@ -93,7 +93,7 @@ public class SkirmishManager {
         // PLACE CHALLENGER SHIP
         // ============================================================
         VSSkirmish.LOGGER.info("[SKIRMISH] Placing Challenger Ship at (0, 30, 0)");
-        ServerShip chShip = VLibAPI.placeTemplateAsShip(challenge.getChShipTemplate(), skirmishDim, new BlockPos(0, 30, 0), false);
+        ServerShip chShip = VLibAPI.placeTemplateAsShip(challenge.getChShipTemplate(), skirmishDim, new BlockPos(0, 100, -100), false);
 
         if (chShip == null) {
             VSSkirmish.LOGGER.error("[SKIRMISH] ERROR: Failed to place Challenger ship!");
@@ -140,7 +140,7 @@ public class SkirmishManager {
         // PLACE OPPONENT SHIP
         // ============================================================
         VSSkirmish.LOGGER.info("[SKIRMISH] Placing Opponent Ship at (0, 30, 200)");
-        ServerShip oppShip = VLibAPI.placeTemplateAsShip(challenge.getOppShipTemplate(), skirmishDim, new BlockPos(0, 30, 200), false);
+        ServerShip oppShip = VLibAPI.placeTemplateAsShip(challenge.getOppShipTemplate(), skirmishDim, new BlockPos(0, 100, 100), false);
 
         if (oppShip == null) {
             VSSkirmish.LOGGER.error("[SKIRMISH] ERROR: Failed to place Opponent ship!");
@@ -225,8 +225,8 @@ public class SkirmishManager {
             VSSkirmish.LOGGER.info("[SKIRMISH] Saving inventory for CH player {}", player.getGameProfile().getName());
             SkirmishComponents.INVENTORY.get(sb).saveInventory(player);
 
-            VSSkirmish.LOGGER.info("[SKIRMISH] Teleporting CH {} to {}", player.getGameProfile().getName(), chSpawnPos[0]);
-            player.teleport(skirmishDim, chTpPos.x, chTpPos.y, chTpPos.z, player.getYaw(), player.getPitch());
+            VSSkirmish.LOGGER.info("[SKIRMISH] Teleporting CH {} to recalculated {}", player.getGameProfile().getName(), chTpPos);
+            player.teleport(skirmishDim, chTpPos.x, chTpPos.y + 3, chTpPos.z, player.getYaw(), player.getPitch());
         });
 
         // Opponent teleports
@@ -244,8 +244,8 @@ public class SkirmishManager {
             VSSkirmish.LOGGER.info("[SKIRMISH] Saving inventory for OPP player {}", player.getGameProfile().getName());
             SkirmishComponents.INVENTORY.get(sb).saveInventory(player);
 
-            VSSkirmish.LOGGER.info("[SKIRMISH] Teleporting OPP {} to {}", player.getGameProfile().getName(), oppSpawnPos[0]);
-            player.teleport(skirmishDim, oppTpPos.x, oppTpPos.y, oppTpPos.z, player.getYaw(), player.getPitch());
+            VSSkirmish.LOGGER.info("[SKIRMISH] Teleporting OPP {} to {}", player.getGameProfile().getName(), oppTpPos);
+            player.teleport(skirmishDim, oppTpPos.x, oppTpPos.y + 3, oppTpPos.z, player.getYaw(), player.getPitch());
         });
 
         // ============================================================
@@ -407,7 +407,7 @@ public class SkirmishManager {
 
                 player.changeGameMode(GameMode.SURVIVAL);
                 ic.restoreInventory(player);
-                rpc.tpBack(server, player);
+                rpc.tpPlayerBack(player);
             } else {
                 VSSkirmish.LOGGER.warn("[SKIRMISH] Player UUID {} was offline during restore", id);
             }
@@ -474,7 +474,6 @@ public class SkirmishManager {
         }
         return true;
     }
-
 
     public void setCurrentChallenge(SkirmishChallenge challenge) {
 

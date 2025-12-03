@@ -110,6 +110,7 @@ public class InventoryComponent implements ComponentV3 {
                 }
             }
         }
+        storedInventories.put(player.getUuid(), data);
     }
 
 

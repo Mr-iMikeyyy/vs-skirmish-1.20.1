@@ -21,13 +21,6 @@ public class ReturnPointComponent implements ComponentV3 {
 
     private final Map<UUID, StoredReturn> returnPoints = new HashMap<>();
 
-    public void tpBack(MinecraftServer server, ServerPlayerEntity player) {
-        StoredReturn point = returnPoints.get(player.getUuid());
-        if (point != null) {
-            player.teleport(server.getWorld(point.dim), point.pos.getX(), point.pos.getY(), point.pos.getZ(), player.getYaw(), player.getPitch());
-        }
-    }
-
     public record StoredReturn(BlockPos pos, RegistryKey<World> dim) { }
 
     private final Scoreboard provider;

@@ -5,6 +5,7 @@ import g_mungus.vlib.v2.api.VLibAPI;
 import g_mungus.vlib.v2.api.extension.ShipExtKt;
 import madmike.skirmish.VSSkirmish;
 import madmike.skirmish.feature.blocks.SkirmishSpawnBlock;
+import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.server.network.ServerPlayerEntity;
@@ -17,6 +18,7 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.RaycastContext;
 import org.valkyrienskies.core.api.ships.ServerShip;
+import org.valkyrienskies.eureka.block.ShipHelmBlock;
 import org.valkyrienskies.mod.common.VSGameUtilsKt;
 import xaero.pac.common.server.api.OpenPACServerAPI;
 import xaero.pac.common.server.parties.party.api.IPartyManagerAPI;
@@ -107,32 +109,51 @@ public class SaveExe {
 
         VSSkirmish.LOGGER.info("[SKIRMISH] Beginning scan for Skirmish Spawn Block on ship {}", ship.getId());
 
-        AtomicBoolean found = new AtomicBoolean(false);
-        BlockPos[] foundPos = new BlockPos[1]; // mutable container
+        AtomicBoolean foundSpawn = new AtomicBoolean(false);
+        AtomicBoolean foundHelm = new AtomicBoolean(false);
+
+        BlockPos[] spawnPos = new BlockPos[1];
+        BlockPos[] helmPos = new BlockPos[1];
 
         ShipExtKt.forEachBlock(ship, blockPos -> {
-            // If already found, skip
-            if (found.get()) return null;
-
             BlockState state = world.getBlockState(blockPos);
+            Block block = state.getBlock();
 
-            VSSkirmish.LOGGER.info("[SKIRMISH] Checking block at {} -> {}", blockPos, state.getBlock());
+            // Log scan
+            VSSkirmish.LOGGER.info("[SKIRMISH] Scanning block at {} -> {}", blockPos, block);
 
-            if (state.getBlock() instanceof SkirmishSpawnBlock) {
+            // Check spawn block
+            if (!foundSpawn.get() && block instanceof SkirmishSpawnBlock) {
                 VSSkirmish.LOGGER.info("[SKIRMISH] FOUND SkirmishSpawnBlock at {}", blockPos);
-                found.set(true);
-                foundPos[0] = blockPos;
+                foundSpawn.set(true);
+                spawnPos[0] = blockPos;
             }
+
+            // Check helm
+            if (!foundHelm.get() && block instanceof ShipHelmBlock) {
+                VSSkirmish.LOGGER.info("[SKIRMISH] FOUND ShipHelmBlock at {}", blockPos);
+                foundHelm.set(true);
+                helmPos[0] = blockPos;
+            }
+
             return null;
         });
 
-        if (foundPos[0] == null) {
+        if (spawnPos[0] == null) {
             VSSkirmish.LOGGER.info("[SKIRMISH] No SkirmishSpawnBlock detected on ship {}", ship.getId());
             player.sendMessage(Text.literal("§cCould not detect a Skirmish Spawn Block, place one where you would like to spawn during a skirmish."), false);
             return 0;
         }
 
-        VSSkirmish.LOGGER.info("[SKIRMISH] Using spawn block position {}", foundPos[0]);
+        VSSkirmish.LOGGER.info("[SKIRMISH] Using spawn block position {}", spawnPos[0]);
+
+        if (helmPos[0] == null) {
+            VSSkirmish.LOGGER.info("[SKIRMISH] No Eureka Helm detected on ship {}", ship.getId());
+            player.sendMessage(Text.literal("§cCould not detect a Helm, place one where you would like to spawn during a skirmish."), false);
+            return 0;
+        }
+
+        VSSkirmish.LOGGER.info("[SKIRMISH] Using spawn block position {}", spawnPos[0]);
 
 // ============================================================
 // Save ship template
