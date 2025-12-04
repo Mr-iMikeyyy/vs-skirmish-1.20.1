@@ -6,6 +6,8 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents;
 import net.minecraft.registry.Registries;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.Identifier;
+import org.valkyrienskies.mod.common.entity.handling.DefaultShipyardEntityHandler;
+import org.valkyrienskies.mod.common.entity.handling.VSEntityManager;
 
 public class EntitySpawnEvent {
     public static void register() {
@@ -16,7 +18,10 @@ public class EntitySpawnEvent {
                 Identifier id = Registries.ENTITY_TYPE.getId(entity.getType());
 
                 // If it's NOT whitelisted, remove it
-                if (!SkirmishConfig.ENTITY_WHITELIST.contains(id.toString())) {
+                // unless it's a seat entity or something similar
+                if (!SkirmishConfig.ENTITY_WHITELIST.contains(id.toString())
+                        && VSEntityManager.INSTANCE.getHandler(entity) != DefaultShipyardEntityHandler.INSTANCE
+                ) {
                     entity.discard();
                 }
             }
