@@ -12,7 +12,7 @@ import xaero.pac.common.server.parties.party.api.IPartyManagerAPI;
 import xaero.pac.common.server.parties.party.api.IServerPartyAPI;
 
 public class DenyExe {
-    public static int executeDeny(CommandContext<ServerCommandSource> ctx) {
+    public static int execute(CommandContext<ServerCommandSource> ctx) {
 
         ServerPlayerEntity player = ctx.getSource().getPlayer();
         if (player == null) {

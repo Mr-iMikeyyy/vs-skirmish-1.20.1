@@ -12,7 +12,7 @@ import xaero.pac.common.server.parties.party.api.IPartyManagerAPI;
 import xaero.pac.common.server.parties.party.api.IServerPartyAPI;
 
 public class StatsExe {
-    public static int executeStats(CommandContext<ServerCommandSource> ctx) {
+    public static int execute(CommandContext<ServerCommandSource> ctx) {
 
         ServerPlayerEntity player = ctx.getSource().getPlayer();
         if (player == null) {

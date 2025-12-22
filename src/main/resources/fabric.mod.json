@@ -44,7 +44,6 @@
 	"custom": {
 		"cardinal-components": [
 			"vs-skirmish:inventory",
-			"vs-skirmish:names",
 			"vs-skirmish:refunds",
 			"vs-skirmish:return_points",
 			"vs-skirmish:stats",

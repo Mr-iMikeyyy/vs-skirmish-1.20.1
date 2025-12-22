@@ -11,6 +11,7 @@ import net.minecraft.server.world.ServerWorld;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.world.GameMode;
 import net.minecraft.world.World;
 
 import java.util.HashMap;
@@ -41,6 +42,11 @@ public class ReturnPointComponent implements ComponentV3 {
 
     public void tpPlayerBack(ServerPlayerEntity player) {
         UUID id = player.getUuid();
+
+        player.changeGameMode(GameMode.SURVIVAL);
+        player.setHealth(player.getMaxHealth());
+        player.clearStatusEffects();
+        player.extinguish();
 
         StoredReturn data = returnPoints.remove(id);
 

@@ -28,7 +28,7 @@ import java.util.Set;
 import java.util.UUID;
 
 public class ChallengeTeamWagerExe {
-    public static int executeChallengeTeamWager(CommandContext<ServerCommandSource> ctx) {
+    public static int execute(CommandContext<ServerCommandSource> ctx) {
 
         VSSkirmish.LOGGER.info("[SKIRMISH] ===== /skirmish challenge <team> <wager> executed =====");
 

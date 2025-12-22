@@ -4,9 +4,13 @@ import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import madmike.skirmish.command.exe.*;
+import madmike.skirmish.command.req.NotInDuelReq;
+import madmike.skirmish.command.req.NotInSkirmishReq;
 import madmike.skirmish.command.req.PartyLeaderReq;
 import madmike.skirmish.command.req.PartyReq;
 import madmike.skirmish.command.sug.ChallengeTeamSug;
+import madmike.skirmish.command.sug.SpectatePlayerSug;
+import madmike.skirmish.component.SkirmishComponents;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.server.network.ServerPlayerEntity;
@@ -43,12 +47,13 @@ public class SkirmishCommand {
                                 
                                 §e/skirmish stats §7- View your party’s stats
                                 §e/skirmish top §7- View top performing parties
-                                §e/skirmish spectate §7- Watch the current skirmish
+                                §e/skirmish spectate <player> §7- Watch the current skirmish
                                 
                                 §6--- Rules ---
                                 
                                 §7• Destroy the enemy helm or eliminate all enemies to win.
-                                """));
+                                """)
+                            );
                         }
                         return 1;
                     })
@@ -57,11 +62,13 @@ public class SkirmishCommand {
                     // /skirmish challenge <team> [wager]
                     // ============================================================
                     .then(literal("challenge")
-                            .requires(PartyLeaderReq::reqPartyLeader)
+                            .requires(PartyLeaderReq::require)
+                            .requires(NotInSkirmishReq::require)
+                            .requires(NotInDuelReq::require)
                             .then(argument("team", StringArgumentType.string())
-                                    .suggests(ChallengeTeamSug::sugChallengeTeam)
+                                    .suggests(ChallengeTeamSug::suggest)
                                     .then(argument("wager", IntegerArgumentType.integer(0))
-                                            .executes(ChallengeTeamWagerExe::executeChallengeTeamWager)
+                                            .executes(ChallengeTeamWagerExe::execute)
                                     )
                             )
                     )
@@ -70,69 +77,159 @@ public class SkirmishCommand {
                     // /skirmish accept
                     // ============================================================
                     .then(literal("accept")
-                            .requires(PartyLeaderReq::reqPartyLeader)
-                            .executes(AcceptExe::executeAccept)
+                            .requires(NotInSkirmishReq::require)
+                            .requires(NotInDuelReq::require)
+                            .requires(PartyLeaderReq::require)
+                            .executes(AcceptExe::execute)
                     )
 
                     // ============================================================
                     // /skirmish cancel
                     // ============================================================
                     .then(literal("cancel")
-                            .requires(PartyLeaderReq::reqPartyLeader)
-                            .executes(CancelExe::executeCancel)
+                            .requires(NotInSkirmishReq::require)
+                            .requires(NotInDuelReq::require)
+                            .requires(PartyLeaderReq::require)
+                            .executes(CancelExe::execute)
                     )
 
                     // ============================================================
                     // /skirmish deny
                     // ============================================================
                     .then(literal("deny")
-                            .requires(PartyLeaderReq::reqPartyLeader)
-                            .executes(DenyExe::executeDeny)
+                            .requires(NotInSkirmishReq::require)
+                            .requires(NotInDuelReq::require)
+                            .requires(PartyLeaderReq::require)
+                            .executes(DenyExe::execute)
                     )
 
                     // ============================================================
                     // /skirmish save
                     // ============================================================
                     .then(literal("save")
-                            .requires(PartyLeaderReq::reqPartyLeader)
-                            .executes(SaveExe::executeSave)
+                            .requires(NotInSkirmishReq::require)
+                            .requires(NotInDuelReq::require)
+                            .requires(PartyLeaderReq::require)
+                            .executes(SaveExe::execute)
                     )
 
                     // ============================================================
                     // /skirmish turn on
                     // ============================================================
                     .then(literal("turnOn")
-                            .requires(PartyLeaderReq::reqPartyLeader)
-                            .executes(TurnOnExe::exeTurnOn)
+                            .requires(NotInSkirmishReq::require)
+                            .requires(NotInDuelReq::require)
+                            .requires(PartyLeaderReq::require)
+                            .executes(TurnOnExe::execute)
                     )
 
                     // ============================================================
                     // /skirmish turn off
                     // ============================================================
                     .then(literal("turnOff")
-                            .requires(PartyLeaderReq::reqPartyLeader)
-                            .executes(TurnOffExe::exeTurnOff)
+                            .requires(NotInSkirmishReq::require)
+                            .requires(NotInDuelReq::require)
+                            .requires(PartyLeaderReq::require)
+                            .executes(TurnOffExe::execute)
                     )
 
                     // ============================================================
                     // /skirmish stats
                     // ============================================================
                     .then(literal("stats")
-                            .requires(PartyReq::reqParty)
-                            .executes(StatsExe::executeStats))
+                            .requires(PartyReq::require)
+                            .executes(StatsExe::execute))
 
                     // ============================================================
                     // /skirmish top
                     // ============================================================
                     .then(literal("top")
-                            .executes(TopExe::executeTop))
+                            .executes(TopExe::execute))
 
                     // ============================================================
                     // /skirmish spectate
                     // ============================================================
                     .then(literal("spectate")
-                            .executes(SpectateExe::executeSpectate)
+                            .requires(NotInSkirmishReq::require)
+                            .requires(NotInDuelReq::require)
+                            .then(argument("player", StringArgumentType.string())
+                                    .suggests(SpectatePlayerSug::suggest)
+                                    .executes(SpectatePlayerExe::execute)
+                            )
+                    )
+
+                    // ============================================================
+                    // /skirmish test
+                    // ============================================================
+                    .then(literal("test")
+                            .requires(source -> source.hasPermissionLevel(2))
+                            .then(literal("basic")
+                                    .executes(TestExe::executeTestSpawnBasic)
+                            )
+                            .then(literal("adv")
+                                    .executes(TestExe::executeTestSpawnAdvanced)
+                            )
+                            .then(literal("resetGravity")
+                                    .executes(TestExe::executeTestResetGravity)
+                            )
+                            .then(literal("floating")
+                                    .executes(TestExe::executeTestSpawnFloating)
+                            )
+                            .then(literal("floatingAdv")
+                                    .executes(TestExe::executeTestSpawnFloatingAdv)
+                            )
+                            .then(literal("printTrinkets")
+                                    .executes(TestExe::executeTestTrinkets)
+                            )
+                            .then(literal("saveInv")
+                                    .executes(ctx -> {
+                                        ServerPlayerEntity player = ctx.getSource().getPlayer();
+                                        if (player == null) {
+                                            return 0;
+                                        }
+                                        SkirmishComponents.INVENTORY.get(ctx.getSource().getServer().getScoreboard()).saveInventory(player);
+                                        return 1;
+                                    })
+                            )
+                            .then(literal("restoreInv")
+                                    .executes(ctx -> {
+                                        ServerPlayerEntity player = ctx.getSource().getPlayer();
+                                        if (player == null) {
+                                            return 0;
+                                        }
+                                        SkirmishComponents.INVENTORY.get(ctx.getSource().getServer().getScoreboard()).restoreInventory(player);
+                                        return 1;
+                                    })
+                            )
+                    )
+
+                    // ============================================================
+                    // /skirmish admin
+                    // ============================================================
+                    .then(literal("admin")
+                            .requires(source -> source.hasPermissionLevel(2))
+                            // TODO DELETE SHIPS
+//                            .then(literal("deleteSavedShip")
+//                                    .then(argument("ship", StringArgumentType.string())
+//                                            .suggests(AdminDeleteSavedShipSug::suggest)
+//                                            .executes(TestExe::executeTestSpawnBasic)
+//                                    )
+//                            )
+//                            .then(literal("deleteAllShips")
+//                                    .executes(TestExe::executeTestSpawnAdvanced)
+//                            )
+                            // TODO DELETE SPECIFIC STAT
+//                            .then(literal("resetStat")
+//                                    .then(argument("party", StringArgumentType.string())
+//                                            .suggests(AdminResetStatSug::suggest)
+//                                            .executes(AdminResetStatExe::execute)
+//                                    )
+//                            )
+                            .then(literal("resetAllStats")
+                                    .executes(AdminResetAllStatsExe::execute)
+                            )
                     );
+
 
             dispatcher.register(skirmishCommand);
 

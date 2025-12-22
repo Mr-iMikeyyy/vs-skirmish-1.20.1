@@ -11,6 +11,7 @@ import madmike.skirmish.component.components.StatsComponent;
 import madmike.skirmish.dimension.SkirmishDimension;
 import madmike.skirmish.feature.blocks.SkirmishSpawnBlock;
 import net.minecraft.block.BlockState;
+import net.minecraft.block.Blocks;
 import net.minecraft.scoreboard.Scoreboard;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.PlayerManager;
@@ -20,7 +21,9 @@ import net.minecraft.text.Text;
 import net.minecraft.util.WorldSavePath;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.GameMode;
+import net.minecraft.world.chunk.ChunkStatus;
 import org.joml.Vector3d;
+import org.joml.primitives.AABBdc;
 import org.valkyrienskies.core.api.ships.ServerShip;
 import org.valkyrienskies.core.api.ships.Ship;
 import org.valkyrienskies.mod.common.VSGameUtilsKt;
@@ -44,6 +47,13 @@ public class SkirmishManager {
 
     private Skirmish currentSkirmish;
 
+    private int countdownTicks = 0;
+
+    private boolean isCountingDown = false;
+
+    private static final int CHECK_INTERVAL_TICKS = 200; // 10 seconds
+    private static int tickCounter = 0;
+
     public static final SkirmishManager INSTANCE = new SkirmishManager();
 
     /* ================= Constructor ================= */
@@ -61,6 +71,32 @@ public class SkirmishManager {
             if (currentSkirmish.isExpired()) {
                 endSkirmish(server, EndOfSkirmishType.TIME);
             }
+            if (isCountingDown) {
+                countdownTicks--;
+                if (countdownTicks % 20 == 0) {
+                    int secondsLeft = countdownTicks / 20;
+                    if (secondsLeft != 0) {
+                        currentSkirmish.broadcastMsg(server, "§eSkirmish starts in §c" + secondsLeft);
+                    }
+                    else {
+                        isCountingDown = false;
+                        currentSkirmish.broadcastMsg(server, "§eSkirmish has started! Fight!");
+                        PlayerManager pm = server.getPlayerManager();
+                        for (UUID id : currentSkirmish.getAllInvolvedPlayers()) {
+                            ServerPlayerEntity player = pm.getPlayer(id);
+                            if (player != null) {
+                                player.setNoGravity(false);
+                            }
+                        }
+                    }
+                }
+            }
+//            tickCounter++;
+//
+//            if (tickCounter >= CHECK_INTERVAL_TICKS) {
+//                tickCounter = 0;
+//                currentSkirmish.runDistanceCheck(server);
+//            }
         }
         if (currentChallenge != null) {
             if (currentChallenge.isExpired()) {
@@ -92,8 +128,10 @@ public class SkirmishManager {
         // ============================================================
         // PLACE CHALLENGER SHIP
         // ============================================================
-        VSSkirmish.LOGGER.info("[SKIRMISH] Placing Challenger Ship at (0, 30, 0)");
-        ServerShip chShip = VLibAPI.placeTemplateAsShip(challenge.getChShipTemplate(), skirmishDim, new BlockPos(0, 100, -100), false);
+
+        BlockPos chShipPos = new BlockPos(0, 31, -100);
+        VSSkirmish.LOGGER.info("[SKIRMISH] Placing Challenger Ship at {}", chShipPos);
+        ServerShip chShip = VLibAPI.placeTemplateAsShip(challenge.getChShipTemplate(), skirmishDim, chShipPos, false);
 
         if (chShip == null) {
             VSSkirmish.LOGGER.error("[SKIRMISH] ERROR: Failed to place Challenger ship!");
@@ -108,39 +146,40 @@ public class SkirmishManager {
         // ============================================================
         // SCAN FOR CHALLENGER SPAWN BLOCK
         // ============================================================
-        VSSkirmish.LOGGER.info("[SKIRMISH] Scanning Challenger Ship for Skirmish Spawn Block...");
-
-        AtomicBoolean foundChSpawn = new AtomicBoolean(false);
-        BlockPos[] chSpawnPos = new BlockPos[1];
-
-        ShipExtKt.forEachBlock(chShip, blockPos -> {
-            if (foundChSpawn.get()) return null;
-
-            BlockState state = skirmishDim.getBlockState(blockPos);
-
-            VSSkirmish.LOGGER.info("[SKIRMISH] CH scan -> {} : {}", blockPos, state.getBlock());
-
-            if (state.getBlock() instanceof SkirmishSpawnBlock) {
-                foundChSpawn.set(true);
-                chSpawnPos[0] = blockPos;
-                VSSkirmish.LOGGER.info("[SKIRMISH] FOUND CH Skirmish Spawn Block at {}", blockPos);
-            }
-            return null;
-        });
-
-        if (chSpawnPos[0] == null) {
-            VSSkirmish.LOGGER.error("[SKIRMISH] ERROR: Challenger Ship missing Skirmish Spawn Block!");
-            challenge.broadcastMsg(server,"Could not detect a Skirmish Spawn Block on challenger ship, this should never happen, cancelling skirmish");
-            SkirmishComponents.REFUNDS.get(server.getScoreboard()).refundChallenge(server, challenge);
-            currentChallenge = null;
-            return;
-        }
+//        VSSkirmish.LOGGER.info("[SKIRMISH] Scanning Challenger Ship for Skirmish Spawn Block...");
+//
+//        AtomicBoolean foundChSpawn = new AtomicBoolean(false);
+//        BlockPos[] chSpawnPos = new BlockPos[1];
+//
+//        ShipExtKt.forEachBlock(chShip, blockPos -> {
+//            if (foundChSpawn.get()) return null;
+//
+//            BlockState state = skirmishDim.getBlockState(blockPos);
+//
+//            VSSkirmish.LOGGER.info("[SKIRMISH] CH scan -> {} : {}", blockPos, state.getBlock());
+//
+//            if (state.getBlock() instanceof SkirmishSpawnBlock) {
+//                foundChSpawn.set(true);
+//                chSpawnPos[0] = blockPos;
+//                VSSkirmish.LOGGER.info("[SKIRMISH] FOUND CH Skirmish Spawn Block at {}", blockPos);
+//            }
+//            return null;
+//        });
+//
+//        if (chSpawnPos[0] == null) {
+//            VSSkirmish.LOGGER.error("[SKIRMISH] ERROR: Challenger Ship missing Skirmish Spawn Block!");
+//            challenge.broadcastMsg(server,"Could not detect a Skirmish Spawn Block on challenger ship, this should never happen, cancelling skirmish");
+//            SkirmishComponents.REFUNDS.get(server.getScoreboard()).refundChallenge(server, challenge);
+//            currentChallenge = null;
+//            return;
+//        }
 
         // ============================================================
         // PLACE OPPONENT SHIP
         // ============================================================
-        VSSkirmish.LOGGER.info("[SKIRMISH] Placing Opponent Ship at (0, 30, 200)");
-        ServerShip oppShip = VLibAPI.placeTemplateAsShip(challenge.getOppShipTemplate(), skirmishDim, new BlockPos(0, 100, 100), false);
+        BlockPos oppShipPos = new BlockPos(0, 31, 100);
+        VSSkirmish.LOGGER.info("[SKIRMISH] Placing Opponent Ship at {}", oppShipPos);
+        ServerShip oppShip = VLibAPI.placeTemplateAsShip(challenge.getOppShipTemplate(), skirmishDim, oppShipPos, false);
 
         if (oppShip == null) {
             VSSkirmish.LOGGER.error("[SKIRMISH] ERROR: Failed to place Opponent ship!");
@@ -155,33 +194,33 @@ public class SkirmishManager {
         // ============================================================
         // SCAN FOR OPPONENT SPAWN BLOCK
         // ============================================================
-        VSSkirmish.LOGGER.info("[SKIRMISH] Scanning Opponent Ship for Skirmish Spawn Block...");
-
-        AtomicBoolean foundOppSpawn = new AtomicBoolean(false);
-        BlockPos[] oppSpawnPos = new BlockPos[1];
-
-        ShipExtKt.forEachBlock(oppShip, blockPos -> {
-            if (foundOppSpawn.get()) return null;
-
-            BlockState state = skirmishDim.getBlockState(blockPos);
-
-            VSSkirmish.LOGGER.info("[SKIRMISH] OPP scan -> {} : {}", blockPos, state.getBlock());
-
-            if (state.getBlock() instanceof SkirmishSpawnBlock) {
-                foundOppSpawn.set(true);
-                oppSpawnPos[0] = blockPos;
-                VSSkirmish.LOGGER.info("[SKIRMISH] FOUND OPP Skirmish Spawn Block at {}", blockPos);
-            }
-            return null;
-        });
-
-        if (oppSpawnPos[0] == null) {
-            VSSkirmish.LOGGER.error("[SKIRMISH] ERROR: Opponent Ship missing Skirmish Spawn Block!");
-            challenge.broadcastMsg(server,"Could not detect a Skirmish Spawn Block on opponent ship, this should never happen, cancelling skirmish");
-            SkirmishComponents.REFUNDS.get(server.getScoreboard()).refundChallenge(server, challenge);
-            currentChallenge = null;
-            return;
-        }
+//        VSSkirmish.LOGGER.info("[SKIRMISH] Scanning Opponent Ship for Skirmish Spawn Block...");
+//
+//        AtomicBoolean foundOppSpawn = new AtomicBoolean(false);
+//        BlockPos[] oppSpawnPos = new BlockPos[1];
+//
+//        ShipExtKt.forEachBlock(oppShip, blockPos -> {
+//            if (foundOppSpawn.get()) return null;
+//
+//            BlockState state = skirmishDim.getBlockState(blockPos);
+//
+//            VSSkirmish.LOGGER.info("[SKIRMISH] OPP scan -> {} : {}", blockPos, state.getBlock());
+//
+//            if (state.getBlock() instanceof SkirmishSpawnBlock) {
+//                foundOppSpawn.set(true);
+//                oppSpawnPos[0] = blockPos;
+//                VSSkirmish.LOGGER.info("[SKIRMISH] FOUND OPP Skirmish Spawn Block at {}", blockPos);
+//            }
+//            return null;
+//        });
+//
+//        if (oppSpawnPos[0] == null) {
+//            VSSkirmish.LOGGER.error("[SKIRMISH] ERROR: Opponent Ship missing Skirmish Spawn Block!");
+//            challenge.broadcastMsg(server,"Could not detect a Skirmish Spawn Block on opponent ship, this should never happen, cancelling skirmish");
+//            SkirmishComponents.REFUNDS.get(server.getScoreboard()).refundChallenge(server, challenge);
+//            currentChallenge = null;
+//            return;
+//        }
 
         // ============================================================
         // LOAD PARTIES & TELEPORT PLAYERS
@@ -210,13 +249,24 @@ public class SkirmishManager {
             return;
         }
 
+        AABBdc chShipWorldAABB = chShip.getWorldAABB();
+
+        double chLength = chShipWorldAABB.maxZ() - chShipWorldAABB.minZ();
+
+        double chSafe = chLength / 2.0 + 10.0; // 10 blocks of air buffer
+
+        Vector3d chShipCenter = chShipWorldAABB.center(new Vector3d());
+
+        BlockPos chSpawn = new BlockPos(0, 64, (int) (chShipCenter.z - chSafe));
+
+        skirmishDim.getChunk(chSpawn.getX() >> 4, chSpawn.getZ() >> 4, ChunkStatus.FULL, true);
+
         // Challenger teleports
         Set<UUID> challengerIds = new HashSet<>();
         VSSkirmish.LOGGER.info("[SKIRMISH] Teleporting Challenger Party: {}", chParty.getId());
 
-        Vector3d chTpPos = chShip.getTransform().getShipToWorld().transformPosition(new Vector3d(chSpawnPos[0].getX(), chSpawnPos[0].getY(), chSpawnPos[0].getZ()));
-
         chParty.getOnlineMemberStream().forEach(player -> {
+            player.setNoGravity(true);
             challengerIds.add(player.getUuid());
 
             VSSkirmish.LOGGER.info("[SKIRMISH] Saving return point for CH player {}", player.getGameProfile().getName());
@@ -225,17 +275,30 @@ public class SkirmishManager {
             VSSkirmish.LOGGER.info("[SKIRMISH] Saving inventory for CH player {}", player.getGameProfile().getName());
             SkirmishComponents.INVENTORY.get(sb).saveInventory(player);
 
-            VSSkirmish.LOGGER.info("[SKIRMISH] Teleporting CH {} to recalculated {}", player.getGameProfile().getName(), chTpPos);
-            player.teleport(skirmishDim, chTpPos.x, chTpPos.y + 3, chTpPos.z, player.getYaw(), player.getPitch());
+            VSSkirmish.LOGGER.info("[SKIRMISH] Teleporting CH {} to recalculated {}", player.getGameProfile().getName(), chSpawn);
+            player.teleport(skirmishDim, chSpawn.getX(), chSpawn.getY(), chSpawn.getZ(), player.getYaw(), player.getPitch());
         });
 
         // Opponent teleports
+
+
+        AABBdc oppShipWorldAABB = oppShip.getWorldAABB();
+
+        double oppLength = oppShipWorldAABB.maxZ() - oppShipWorldAABB.minZ();
+
+        double oppSafe = oppLength / 2.0 + 10.0; // 10 blocks of air buffer
+
+        Vector3d oppShipCenter = oppShipWorldAABB.center(new Vector3d());
+
+        BlockPos oppSpawn = new BlockPos(0, 64, (int) (oppShipCenter.z + oppSafe));
+
+        skirmishDim.getChunk(oppSpawn.getX() >> 4, oppSpawn.getZ() >> 4, ChunkStatus.FULL, true);
+
         Set<UUID> opponentIds = new HashSet<>();
         VSSkirmish.LOGGER.info("[SKIRMISH] Teleporting Opponent Party: {}", oppParty.getId());
 
-        Vector3d oppTpPos = oppShip.getTransform().getShipToWorld().transformPosition(new Vector3d(oppSpawnPos[0].getX(), oppSpawnPos[0].getY(), oppSpawnPos[0].getZ()));
-
         oppParty.getOnlineMemberStream().forEach(player -> {
+            player.setNoGravity(true);
             opponentIds.add(player.getUuid());
 
             VSSkirmish.LOGGER.info("[SKIRMISH] Saving return point for OPP player {}", player.getGameProfile().getName());
@@ -244,8 +307,8 @@ public class SkirmishManager {
             VSSkirmish.LOGGER.info("[SKIRMISH] Saving inventory for OPP player {}", player.getGameProfile().getName());
             SkirmishComponents.INVENTORY.get(sb).saveInventory(player);
 
-            VSSkirmish.LOGGER.info("[SKIRMISH] Teleporting OPP {} to {}", player.getGameProfile().getName(), oppTpPos);
-            player.teleport(skirmishDim, oppTpPos.x, oppTpPos.y + 3, oppTpPos.z, player.getYaw(), player.getPitch());
+            VSSkirmish.LOGGER.info("[SKIRMISH] Teleporting OPP {} to {}", player.getGameProfile().getName(), oppSpawn);
+            player.teleport(skirmishDim, oppSpawn.getX(), oppSpawn.getY(), oppSpawn.getZ(), player.getYaw(), player.getPitch());
         });
 
         // ============================================================
@@ -279,8 +342,15 @@ public class SkirmishManager {
             }
         });
 
+        startCountdown(5);
+
         VSSkirmish.LOGGER.info("[SKIRMISH] ===== Skirmish Started Successfully =====");
         currentChallenge = null;
+    }
+
+    public void startCountdown(int seconds) {
+        this.countdownTicks = seconds * 20;
+        isCountingDown = true;
     }
 
     public void endSkirmish(MinecraftServer server, EndOfSkirmishType type) {
@@ -362,11 +432,11 @@ public class SkirmishManager {
             case OPPONENTS_WIN_SHIP -> {
                 VSSkirmish.LOGGER.info("[SKIRMISH] Result: Opponents win by ship destruction");
 
-                sc.setPartySkirmishStats(currentSkirmish.getChPartyId(), 1, 0,
-                        currentSkirmish.getWager(), 0, 1, 0);
+                sc.setPartySkirmishStats(currentSkirmish.getChPartyId(), 0, 1,
+                        0, currentSkirmish.getWager(), 1, 0);
 
-                sc.setPartySkirmishStats(currentSkirmish.getOppPartyId(), 0, 1,
-                        0, currentSkirmish.getWager(), 0, 1);
+                sc.setPartySkirmishStats(currentSkirmish.getOppPartyId(), 1, 0,
+                        currentSkirmish.getWager(), 0, 0, 1);
 
                 rc.refundPlayer(server, currentSkirmish.getOppLeaderId(),
                         currentSkirmish.getWager() * 20000L);
@@ -388,7 +458,7 @@ public class SkirmishManager {
         }
 
         // ============================================================
-        // TELEPORT PLAYERS BACK
+        // TELEPORT PLAYERS BACK & RESTORE INVENTORY
         // ============================================================
         Set<UUID> players = currentSkirmish.getAllInvolvedPlayers();
         PlayerManager pm = server.getPlayerManager();
@@ -405,7 +475,6 @@ public class SkirmishManager {
                 VSSkirmish.LOGGER.info("[SKIRMISH] Restoring {} (UUID={})",
                         player.getGameProfile().getName(), id);
 
-                player.changeGameMode(GameMode.SURVIVAL);
                 ic.restoreInventory(player);
                 rpc.tpPlayerBack(player);
             } else {
@@ -460,8 +529,10 @@ public class SkirmishManager {
             VSSkirmish.LOGGER.error("[SKIRMISH] IOException during dimension wipe", e);
         }
 
-        VSSkirmish.LOGGER.info("[SKIRMISH] ===== Skirmish End Complete =====");
+        tickCounter = 0;
+        countdownTicks = 0;
         currentSkirmish = null;
+        VSSkirmish.LOGGER.info("[SKIRMISH] ===== Skirmish End Complete =====");
     }
 
     public boolean hasChallengeOrSkirmish() {
@@ -476,7 +547,6 @@ public class SkirmishManager {
     }
 
     public void setCurrentChallenge(SkirmishChallenge challenge) {
-
         this.currentChallenge = challenge;
     }
 
@@ -503,5 +573,15 @@ public class SkirmishManager {
         if (currentSkirmish != null) {
             currentSkirmish.handlePlayerQuit(player);
         }
+    }
+
+    public boolean isMovementLocked(UUID playerId) {
+        if (currentSkirmish == null) {
+            return false;
+        }
+        if (countdownTicks <= 0) {
+            return false;
+        }
+        return currentSkirmish.isPlayerInSkirmish(playerId);
     }
 }

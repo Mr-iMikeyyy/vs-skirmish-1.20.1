@@ -16,8 +16,6 @@ public class JoinEvent {
                 player.changeGameMode(GameMode.SURVIVAL);
             }
 
-            SkirmishComponents.NAMES.get(server.getScoreboard()).onPlayerLogin(player);
-
             SkirmishComponents.RETURN_POINTS.get(server.getScoreboard()).tpPlayerBack(player);
 
             SkirmishComponents.REFUNDS.get(server.getScoreboard()).onPlayerLogin(player);

@@ -10,7 +10,7 @@ import xaero.pac.common.server.parties.party.api.IServerPartyAPI;
 
 
 public class TurnOffExe {
-    public static int exeTurnOff(CommandContext<ServerCommandSource> ctx) {
+    public static int execute(CommandContext<ServerCommandSource> ctx) {
         ServerPlayerEntity player = ctx.getSource().getPlayer();
         if (player == null) {
             ctx.getSource().sendMessage(Text.literal("Must be a player to use this command"));

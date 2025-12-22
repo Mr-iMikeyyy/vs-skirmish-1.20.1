@@ -15,10 +15,7 @@ import xaero.pac.common.server.parties.party.api.IPartyManagerAPI;
 import xaero.pac.common.server.player.config.api.IPlayerConfigManagerAPI;
 import xaero.pac.common.server.player.config.api.PlayerConfigOptions;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 public class StatsComponent implements ComponentV3 {
 
@@ -193,6 +190,14 @@ public class StatsComponent implements ComponentV3 {
         }
 
         tag.put("skirmish_stats", list);
+    }
+
+    public Set<UUID> getAllPartyIds() {
+        return stats.keySet();
+    }
+
+    public void resetAllStats() {
+        stats.clear();
     }
 
     // Updated record

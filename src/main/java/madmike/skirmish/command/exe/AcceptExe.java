@@ -14,7 +14,7 @@ import xaero.pac.common.server.parties.party.api.IPartyManagerAPI;
 import xaero.pac.common.server.parties.party.api.IServerPartyAPI;
 
 public class AcceptExe {
-    public static int executeAccept(CommandContext<ServerCommandSource> ctx) {
+    public static int execute(CommandContext<ServerCommandSource> ctx) {
 
         VSSkirmish.LOGGER.info("[SKIRMISH] ===== /skirmish accept executed =====");
 

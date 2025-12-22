@@ -69,6 +69,8 @@ dependencies {
 
 	modImplementation(files("libs/vlib-1.20.1-0.1.0-pre0+fabric.jar"))
 
+	modImplementation(files("libs/duels-1.0.10.jar"))
+
 	modApi("org.valkyrienskies:valkyrienskies-120-fabric:${vs2_version}") {
 		exclude group: 'com.simibubi', module: ''
 		exclude group: 'dev.engine-room', module: ''
@@ -87,8 +89,6 @@ dependencies {
 	modImplementation("maven.modrinth:eureka:sXx5EPib")
 
 	modImplementation "dev.emi:trinkets:3.7.2"
-
-	modImplementation "maven.modrinth:rlloIFEV:PaHAEoCa"
 
 
 	modImplementation("com.electronwill.night-config:toml:3.6.7")

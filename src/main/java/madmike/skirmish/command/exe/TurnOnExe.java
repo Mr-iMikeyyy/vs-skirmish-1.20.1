@@ -15,7 +15,7 @@ import xaero.pac.common.server.parties.party.api.IServerPartyAPI;
 import java.util.Optional;
 
 public class TurnOnExe {
-    public static int exeTurnOn(CommandContext<ServerCommandSource> ctx) {
+    public static int execute(CommandContext<ServerCommandSource> ctx) {
         ServerPlayerEntity player = ctx.getSource().getPlayer();
         if (player == null) {
             ctx.getSource().sendMessage(Text.literal("Must be a player to use this command"));

@@ -1,14 +1,22 @@
 package madmike.skirmish.logic;
 
+import madmike.skirmish.component.SkirmishComponents;
 import madmike.skirmish.config.SkirmishConfig;
 import madmike.skirmish.dimension.SkirmishDimension;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.PlayerManager;
 import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.structure.StructureTemplate;
+import net.minecraft.server.world.ServerWorld;
 import net.minecraft.text.Text;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.GameMode;
+import org.joml.Vector3d;
+import org.joml.primitives.AABBdc;
+import org.valkyrienskies.core.api.ships.ServerShip;
+import org.valkyrienskies.core.apigame.VSCore;
+import org.valkyrienskies.core.apigame.VSCoreServer;
+import org.valkyrienskies.core.apigame.world.ServerShipWorldCore;
+import org.valkyrienskies.mod.common.VSGameUtilsKt;
 import xaero.pac.common.server.api.OpenPACServerAPI;
 import xaero.pac.common.server.parties.party.api.IPartyManagerAPI;
 import xaero.pac.common.server.parties.party.api.IServerPartyAPI;
@@ -83,8 +91,8 @@ public class Skirmish {
         return expiresAt < System.currentTimeMillis();
     }
 
-    public boolean isPlayerInSkirmish(ServerPlayerEntity player) {
-        return challengers.contains(player.getUuid()) || opponents.contains(player.getUuid());
+    public boolean isPlayerInSkirmish(UUID playerId) {
+        return challengers.contains(playerId) || opponents.contains(playerId);
     }
 
     public boolean handlePlayerDeath(ServerPlayerEntity player) {
@@ -138,30 +146,16 @@ public class Skirmish {
         }
     }
 
-    public void addSpectator(MinecraftServer server, ServerPlayerEntity player) {
-         PlayerManager pm = server.getPlayerManager();
-         BlockPos found = null;
-         Set<UUID> allIds = new HashSet<>();
-         allIds.addAll(challengers);
-         allIds.addAll(opponents);
-         for (UUID id : allIds) {
-             ServerPlayerEntity skirmisher = pm.getPlayer(id);
-             if (skirmisher != null) {
-                 found = skirmisher.getBlockPos();
-                 break;
-             }
-         }
-         if (found != null) {
-             player.teleport(server.getWorld(SkirmishDimension.SKIRMISH_LEVEL_KEY), found.getX(), found.getY(), found.getZ(), player.getYaw(), player.getPitch());
-             player.changeGameMode(GameMode.SPECTATOR);
-             spectators.add(player.getUuid());
-         }
-         else {
-             player.sendMessage(Text.literal("Error trying to spectate"));
-         }
+    public void addSpectator(UUID playerId) {
+         spectators.add(playerId);
     }
 
     public void broadcastMsg(MinecraftServer server, String msg) {
+        broadcastMsgToChParty(server, msg);
+        broadcastMsgToOppParty(server, msg);
+    }
+
+    public void broadcastMsgToChParty(MinecraftServer server, String msg) {
         IPartyManagerAPI pm = OpenPACServerAPI.get(server).getPartyManager();
         IServerPartyAPI chParty = pm.getPartyById(chPartyId);
         if (chParty != null) {
@@ -169,6 +163,10 @@ public class Skirmish {
                 p.sendMessage(Text.literal(msg));
             });
         }
+    }
+
+    public void broadcastMsgToOppParty(MinecraftServer server, String msg) {
+        IPartyManagerAPI pm = OpenPACServerAPI.get(server).getPartyManager();
         IServerPartyAPI oppParty = pm.getPartyById(oppPartyId);
         if (oppParty != null) {
             oppParty.getOnlineMemberStream().forEach(p -> {
@@ -184,4 +182,36 @@ public class Skirmish {
     public long getOppShipId() {
         return oppShipId;
     }
+
+    public Set<UUID> getStillAlive() {
+        Set<UUID> stillAlive = new HashSet<>();
+        stillAlive.addAll(challengers);
+        stillAlive.addAll(opponents);
+        return stillAlive;
+    }
+
+//    public void runDistanceCheck(MinecraftServer server) {
+//        ServerWorld skirmishDim = server.getWorld(SkirmishDimension.SKIRMISH_LEVEL_KEY);
+//
+//        ServerShipWorldCore vs = VSGameUtilsKt.getShipObjectWorld(skirmishDim);
+//        ServerShip chShip = vs.getLoadedShips().stream()
+//                .filter(ship -> ship.getId() == chShipId).findFirst().orElse(null);
+//        ServerShip oppShip = vs.getLoadedShips().stream()
+//                .filter(ship -> ship.getId() == oppShipId).findFirst().orElse(null);
+//
+//        if (chShip == null || oppShip == null) {
+//            // Ship not loaded yet (or skirmish just ended)
+//            return;
+//        }
+//
+//        AABBdc chShipAABB = chShip.getWorldAABB();
+//        AABBdc oppShipAABB = oppShip.getWorldAABB();
+//        Vector3d chCenter = chShipAABB.center(new Vector3d());
+//        Vector3d oppCenter = oppShipAABB.center(new Vector3d());
+//        double distance = chCenter.distance(oppCenter);
+//        if (distance >= 50) {
+//            broadcastMsgToOppParty(server, "Challenger's Ship at " + (int) chCenter.x() + ", " + (int) chCenter.y() + ", " + (int) chCenter.z());
+//            broadcastMsgToChParty(server, "Opponent's Ship at " + (int) oppCenter.x() + ", " + (int) oppCenter.y() + ", " + (int) oppCenter.z());
+//        }
+//    }
 }

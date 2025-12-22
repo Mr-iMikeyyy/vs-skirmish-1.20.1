@@ -6,7 +6,7 @@ import xaero.pac.common.server.api.OpenPACServerAPI;
 import xaero.pac.common.server.parties.party.api.IServerPartyAPI;
 
 public class PartyLeaderReq {
-    public static boolean reqPartyLeader(ServerCommandSource src) {
+    public static boolean require(ServerCommandSource src) {
         ServerPlayerEntity player = src.getPlayer();
         if (player == null) return false;
         IServerPartyAPI party = OpenPACServerAPI.get(src.getServer()).getPartyManager().getPartyByOwner(player.getUuid());

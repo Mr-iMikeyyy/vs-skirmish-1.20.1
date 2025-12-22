@@ -5,23 +5,14 @@ import madmike.skirmish.component.SkirmishComponents;
 import madmike.skirmish.component.components.StatsComponent;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.command.ServerCommandSource;
-import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
 
-public class TopExe {
+public class AdminResetAllStatsExe {
     public static int execute(CommandContext<ServerCommandSource> ctx) {
-
-        ServerCommandSource src = ctx.getSource();
-        ServerPlayerEntity player = src.getPlayer();
-        if (player == null) {
-            src.sendMessage(Text.literal("You must be a player to use this command"));
-            return 0;
-        }
-
-        MinecraftServer server = src.getServer();
-
+        MinecraftServer server = ctx.getSource().getServer();
         StatsComponent sc = SkirmishComponents.STATS.get(server.getScoreboard());
-        player.sendMessage(sc.getPrintableTopStats(server));
+        sc.resetAllStats();
+        ctx.getSource().sendMessage(Text.literal("All skirmish stats have been reset!"));
         return 1;
     }
 }

@@ -20,7 +20,7 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 public class ChallengeTeamSug {
-    public static CompletableFuture<Suggestions> sugChallengeTeam(CommandContext<ServerCommandSource> src, SuggestionsBuilder builder) {
+    public static CompletableFuture<Suggestions> suggest(CommandContext<ServerCommandSource> src, SuggestionsBuilder builder) {
 
         MinecraftServer server = src.getSource().getServer();
         PlayerManager plm = server.getPlayerManager();

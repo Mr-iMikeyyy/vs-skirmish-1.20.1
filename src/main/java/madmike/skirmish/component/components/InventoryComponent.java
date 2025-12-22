@@ -1,10 +1,10 @@
 package madmike.skirmish.component.components;
 
-import com.tiviacz.travelersbackpack.component.ComponentUtils;
 import dev.emi.trinkets.api.TrinketComponent;
 import dev.emi.trinkets.api.TrinketInventory;
 import dev.emi.trinkets.api.TrinketsApi;
 import dev.onyxstudios.cca.api.v3.component.ComponentV3;
+import madmike.skirmish.VSSkirmish;
 import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.inventory.Inventories;
 import net.minecraft.item.ItemStack;
@@ -13,15 +13,15 @@ import net.minecraft.nbt.NbtElement;
 import net.minecraft.scoreboard.Scoreboard;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.text.Text;
 import net.minecraft.util.collection.DefaultedList;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
 public class InventoryComponent implements ComponentV3 {
-
-
 
     // ============================================================
     // STORED INVENTORY DATA CLASS
@@ -34,9 +34,6 @@ public class InventoryComponent implements ComponentV3 {
                 DefaultedList.ofSize(4, ItemStack.EMPTY);
         private final DefaultedList<ItemStack> storedOffhand =
                 DefaultedList.ofSize(1, ItemStack.EMPTY);
-
-        // TRAVELERS BACKPACK
-        private ItemStack storedBackpack = ItemStack.EMPTY;
 
         // TRINKETS: group -> slot -> list
         private final Map<String, Map<String, DefaultedList<ItemStack>>> storedTrinkets =
@@ -55,21 +52,12 @@ public class InventoryComponent implements ComponentV3 {
         this.server = server;
     }
 
-
-    // ============================================================
-    // GET / CREATE STORED INVENTORY ENTRY
-    // ============================================================
-    private StoredInventory getOrCreate(UUID uuid) {
-        return storedInventories.computeIfAbsent(uuid, id -> new StoredInventory());
-    }
-
-
     // ============================================================
     // SAVE INVENTORY
     // ============================================================
     public void saveInventory(ServerPlayerEntity player) {
 
-        StoredInventory data = getOrCreate(player.getUuid());
+        StoredInventory data = new StoredInventory();
         PlayerInventory inv = player.getInventory();
 
         // --- VANILLA ---
@@ -81,12 +69,7 @@ public class InventoryComponent implements ComponentV3 {
 
         data.storedOffhand.set(0, inv.offHand.get(0).copy());
 
-        // --- BACKPACK ---
-        ItemStack bc = ComponentUtils.getWearingBackpack(player);
-        data.storedBackpack = bc != null ? bc.copy() : ItemStack.EMPTY;
-
         // --- TRINKETS ---
-        data.storedTrinkets.clear();
 
         TrinketComponent trinkets =
                 TrinketsApi.getTrinketComponent(player).orElse(null);
@@ -99,6 +82,23 @@ public class InventoryComponent implements ComponentV3 {
                 for (var slotEntry : groupEntry.getValue().entrySet()) {
                     String slot = slotEntry.getKey();
                     TrinketInventory originalList = slotEntry.getValue();
+
+                    // ================== DEBUG LOGS (SAVE) ==================
+                    VSSkirmish.LOGGER.info(
+                            "[INV] Saving trinket slot '{}:{}' size={}",
+                            group, slot, originalList.size()
+                    );
+
+                    for (int i = 0; i < originalList.size(); i++) {
+                        ItemStack s = originalList.getStack(i);
+                        if (!s.isEmpty()) {
+                            VSSkirmish.LOGGER.info(
+                                    "[INV] -> slot {} contains {}",
+                                    i, s.getItem()
+                            );
+                        }
+                    }
+                    // =======================================================
 
                     DefaultedList<ItemStack> copyList =
                             DefaultedList.ofSize(originalList.size(), ItemStack.EMPTY);
@@ -113,17 +113,19 @@ public class InventoryComponent implements ComponentV3 {
         storedInventories.put(player.getUuid(), data);
     }
 
-
     // ============================================================
     // RESTORE INVENTORY
     // ============================================================
     public void restoreInventory(ServerPlayerEntity player) {
 
         StoredInventory data = storedInventories.remove(player.getUuid());
-        if (data == null)
+        if (data == null) {
             return; // nothing to restore
+        }
 
         PlayerInventory inv = player.getInventory();
+
+        inv.clear();
 
         // --- VANILLA ---
         for (int i = 0; i < 36; i++)
@@ -134,32 +136,67 @@ public class InventoryComponent implements ComponentV3 {
 
         inv.offHand.set(0, data.storedOffhand.get(0).copy());
 
-        // --- BACKPACK ---
-        if (!data.storedBackpack.isEmpty()) {
-            ComponentUtils.equipBackpack(player, data.storedBackpack);
-        }
-
         // --- TRINKETS ---
         TrinketComponent trinkets =
                 TrinketsApi.getTrinketComponent(player).orElse(null);
 
-        if (trinkets != null) {
-            for (var groupEntry : data.storedTrinkets.entrySet()) {
-                String group = groupEntry.getKey();
-
-                for (var slotEntry : groupEntry.getValue().entrySet()) {
-                    String slot = slotEntry.getKey();
-                    DefaultedList<ItemStack> list = slotEntry.getValue();
-
-                    TrinketInventory target = trinkets.getInventory().get(group).get(slot);
-
-                    for (int i = 0; i < list.size(); i++)
-                        target.setStack(i, list.get(i).copy());
-                }
-            }
-            trinkets.update();
+        if (trinkets == null) {
+            VSSkirmish.LOGGER.warn("[INV] No TrinketComponent for {}", player.getName().getString());
+            return;
         }
 
+        VSSkirmish.LOGGER.info("[INV] Restoring trinkets for {}", player.getName().getString());
+
+        for (var groupEntry : data.storedTrinkets.entrySet()) {
+            String group = groupEntry.getKey();
+
+            Map<String, TrinketInventory> liveGroup =
+                    trinkets.getInventory().get(group);
+
+            if (liveGroup == null) {
+                VSSkirmish.LOGGER.warn("[INV] Missing trinket group '{}' on restore", group);
+                continue;
+            }
+
+            for (var slotEntry : groupEntry.getValue().entrySet()) {
+                String slot = slotEntry.getKey();
+                DefaultedList<ItemStack> savedList = slotEntry.getValue();
+
+                TrinketInventory target = liveGroup.get(slot);
+                if (target == null) {
+                    VSSkirmish.LOGGER.warn("[INV] Missing trinket slot '{}:{}' on restore", group, slot);
+                    continue;
+                }
+
+                VSSkirmish.LOGGER.info(
+                        "[INV] Restoring trinket slot '{}:{}' savedSize={} targetSize={}",
+                        group, slot, savedList.size(), target.size()
+                );
+
+                int limit = Math.min(savedList.size(), target.size());
+
+                // CLEAR FIRST
+                for (int i = 0; i < target.size(); i++) {
+                    target.setStack(i, ItemStack.EMPTY);
+                }
+
+                for (int i = 0; i < limit; i++) {
+                    ItemStack stack = savedList.get(i);
+                    if (!stack.isEmpty()) {
+                        VSSkirmish.LOGGER.info(
+                                "[INV] -> slot {} inserting {}",
+                                i,
+                                stack.getItem()
+                        );
+                        target.setStack(i, stack.copy());
+
+                    }
+                }
+                target.markUpdate();
+            }
+        }
+
+        trinkets.update();
         inv.markDirty();
         player.currentScreenHandler.sendContentUpdates();
     }
@@ -169,7 +206,7 @@ public class InventoryComponent implements ComponentV3 {
     // WRITE NBT (Full Map)
     // ============================================================
     @Override
-    public void writeToNbt(NbtCompound tag) {
+    public void writeToNbt(@NotNull NbtCompound tag) {
 
         NbtCompound all = new NbtCompound();
 
@@ -183,10 +220,6 @@ public class InventoryComponent implements ComponentV3 {
             Inventories.writeNbt(playerTag, data.storedMain);
             playerTag.put("Armor", Inventories.writeNbt(new NbtCompound(), data.storedArmor));
             playerTag.put("Offhand", Inventories.writeNbt(new NbtCompound(), data.storedOffhand));
-
-            // backpack
-            if (!data.storedBackpack.isEmpty())
-                playerTag.put("Backpack", data.storedBackpack.writeNbt(new NbtCompound()));
 
             // trinkets
             NbtCompound trinketsTag = new NbtCompound();
@@ -229,9 +262,6 @@ public class InventoryComponent implements ComponentV3 {
             Inventories.readNbt(playerTag, data.storedMain);
             Inventories.readNbt(playerTag.getCompound("Armor"), data.storedArmor);
             Inventories.readNbt(playerTag.getCompound("Offhand"), data.storedOffhand);
-
-            if (playerTag.contains("Backpack"))
-                data.storedBackpack = ItemStack.fromNbt(playerTag.getCompound("Backpack"));
 
             // Trinkets
             data.storedTrinkets.clear();
