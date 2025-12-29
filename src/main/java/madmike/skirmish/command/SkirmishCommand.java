@@ -3,14 +3,14 @@ package madmike.skirmish.command;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
+import madmike.cc.component.CCComponents;
 import madmike.skirmish.command.exe.*;
-import madmike.skirmish.command.req.NotInDuelReq;
-import madmike.skirmish.command.req.NotInSkirmishReq;
+import madmike.skirmish.command.req.NotBusyReq;
 import madmike.skirmish.command.req.PartyLeaderReq;
 import madmike.skirmish.command.req.PartyReq;
+import madmike.skirmish.command.req.SkirmishOngoingReq;
 import madmike.skirmish.command.sug.ChallengeTeamSug;
 import madmike.skirmish.command.sug.SpectatePlayerSug;
-import madmike.skirmish.component.SkirmishComponents;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.server.network.ServerPlayerEntity;
@@ -63,8 +63,7 @@ public class SkirmishCommand {
                     // ============================================================
                     .then(literal("challenge")
                             .requires(PartyLeaderReq::require)
-                            .requires(NotInSkirmishReq::require)
-                            .requires(NotInDuelReq::require)
+                            .requires(NotBusyReq::require)
                             .then(argument("team", StringArgumentType.string())
                                     .suggests(ChallengeTeamSug::suggest)
                                     .then(argument("wager", IntegerArgumentType.integer(0))
@@ -77,8 +76,6 @@ public class SkirmishCommand {
                     // /skirmish accept
                     // ============================================================
                     .then(literal("accept")
-                            .requires(NotInSkirmishReq::require)
-                            .requires(NotInDuelReq::require)
                             .requires(PartyLeaderReq::require)
                             .executes(AcceptExe::execute)
                     )
@@ -87,8 +84,6 @@ public class SkirmishCommand {
                     // /skirmish cancel
                     // ============================================================
                     .then(literal("cancel")
-                            .requires(NotInSkirmishReq::require)
-                            .requires(NotInDuelReq::require)
                             .requires(PartyLeaderReq::require)
                             .executes(CancelExe::execute)
                     )
@@ -97,8 +92,6 @@ public class SkirmishCommand {
                     // /skirmish deny
                     // ============================================================
                     .then(literal("deny")
-                            .requires(NotInSkirmishReq::require)
-                            .requires(NotInDuelReq::require)
                             .requires(PartyLeaderReq::require)
                             .executes(DenyExe::execute)
                     )
@@ -107,30 +100,25 @@ public class SkirmishCommand {
                     // /skirmish save
                     // ============================================================
                     .then(literal("save")
-                            .requires(NotInSkirmishReq::require)
-                            .requires(NotInDuelReq::require)
+                            .requires(NotBusyReq::require)
                             .requires(PartyLeaderReq::require)
                             .executes(SaveExe::execute)
                     )
 
                     // ============================================================
-                    // /skirmish turn on
+                    // /skirmish toggle on
                     // ============================================================
-                    .then(literal("turnOn")
-                            .requires(NotInSkirmishReq::require)
-                            .requires(NotInDuelReq::require)
+                    .then(literal("toggleOn")
                             .requires(PartyLeaderReq::require)
-                            .executes(TurnOnExe::execute)
+                            .executes(ToggleOnExe::execute)
                     )
 
                     // ============================================================
-                    // /skirmish turn off
+                    // /skirmish toggle off
                     // ============================================================
-                    .then(literal("turnOff")
-                            .requires(NotInSkirmishReq::require)
-                            .requires(NotInDuelReq::require)
+                    .then(literal("toggleOff")
                             .requires(PartyLeaderReq::require)
-                            .executes(TurnOffExe::execute)
+                            .executes(ToggleOffExe::execute)
                     )
 
                     // ============================================================
@@ -150,8 +138,8 @@ public class SkirmishCommand {
                     // /skirmish spectate
                     // ============================================================
                     .then(literal("spectate")
-                            .requires(NotInSkirmishReq::require)
-                            .requires(NotInDuelReq::require)
+                            .requires(NotBusyReq::require)
+                            .requires(SkirmishOngoingReq::require)
                             .then(argument("player", StringArgumentType.string())
                                     .suggests(SpectatePlayerSug::suggest)
                                     .executes(SpectatePlayerExe::execute)
@@ -187,7 +175,7 @@ public class SkirmishCommand {
                                         if (player == null) {
                                             return 0;
                                         }
-                                        SkirmishComponents.INVENTORY.get(ctx.getSource().getServer().getScoreboard()).saveInventory(player);
+                                        CCComponents.INV.get(ctx.getSource().getServer().getScoreboard()).saveInventory(player);
                                         return 1;
                                     })
                             )
@@ -197,7 +185,7 @@ public class SkirmishCommand {
                                         if (player == null) {
                                             return 0;
                                         }
-                                        SkirmishComponents.INVENTORY.get(ctx.getSource().getServer().getScoreboard()).restoreInventory(player);
+                                        CCComponents.INV.get(ctx.getSource().getServer().getScoreboard()).restoreInventory(player);
                                         return 1;
                                     })
                             )

@@ -52,8 +52,7 @@ public class CancelExe {
         // DENY CHALLENGE
         // ============================================================
 
-        challenge.broadcastMsg(server, "The skirmish challenge was cancelled");
-        SkirmishManager.INSTANCE.setCurrentChallenge(null);
+        challenge.end(server, Text.literal("The skirmish challenge was cancelled"));
         return 1;
     }
 }

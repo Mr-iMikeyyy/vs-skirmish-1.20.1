@@ -1,6 +1,7 @@
 package madmike.skirmish.command.exe;
 
 import com.mojang.brigadier.context.CommandContext;
+import madmike.cc.component.CCComponents;
 import madmike.skirmish.component.SkirmishComponents;
 import madmike.skirmish.logic.Skirmish;
 import madmike.skirmish.logic.SkirmishManager;
@@ -38,7 +39,7 @@ public class SpectatePlayerExe {
             player.sendMessage(Text.literal("You cannot spectate a skirmish you are in"));
             return 0;
         }
-        SkirmishComponents.RETURN_POINTS.get(ctx.getSource().getServer().getScoreboard()).set(player.getUuid(), player.getBlockPos(), player.getServerWorld().getRegistryKey());
+        CCComponents.TP.get(ctx.getSource().getServer().getScoreboard()).set(player.getUuid(), player.getBlockPos(), player.getServerWorld().getRegistryKey());
         BlockPos targetPos = target.getBlockPos();
         player.teleport(target.getServerWorld(), targetPos.getX(), targetPos.getY(), targetPos.getZ(), player.getYaw(), player.getPitch());
         player.changeGameMode(GameMode.SPECTATOR);

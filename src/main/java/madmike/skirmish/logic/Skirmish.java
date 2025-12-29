@@ -1,22 +1,11 @@
 package madmike.skirmish.logic;
 
-import madmike.skirmish.component.SkirmishComponents;
 import madmike.skirmish.config.SkirmishConfig;
-import madmike.skirmish.dimension.SkirmishDimension;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.PlayerManager;
 import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.server.world.ServerWorld;
 import net.minecraft.text.Text;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.GameMode;
-import org.joml.Vector3d;
-import org.joml.primitives.AABBdc;
-import org.valkyrienskies.core.api.ships.ServerShip;
-import org.valkyrienskies.core.apigame.VSCore;
-import org.valkyrienskies.core.apigame.VSCoreServer;
-import org.valkyrienskies.core.apigame.world.ServerShipWorldCore;
-import org.valkyrienskies.mod.common.VSGameUtilsKt;
 import xaero.pac.common.server.api.OpenPACServerAPI;
 import xaero.pac.common.server.parties.party.api.IPartyManagerAPI;
 import xaero.pac.common.server.parties.party.api.IServerPartyAPI;
@@ -26,6 +15,8 @@ import java.util.Set;
 import java.util.UUID;
 
 public class Skirmish {
+
+    private final UUID id;
 
     private final Set<UUID> challengers;
     private final UUID chPartyId;
@@ -46,6 +37,7 @@ public class Skirmish {
     private final long expiresAt;
 
     public Skirmish(Set<UUID> challengers, UUID chPartyId, UUID chLeaderId, Set<UUID> opponents, UUID oppPartyId, UUID oppLeaderId, long chShipId, long oppShipId, int wager) {
+        this.id = UUID.randomUUID();
         this.challengers = challengers;
         this.chPartyId = chPartyId;
         this.chLeaderId = chLeaderId;
@@ -58,6 +50,8 @@ public class Skirmish {
         this.expiresAt = (SkirmishConfig.skirmishMaxTime * 1000L) + System.currentTimeMillis();
         this.spectators = new HashSet<>();
     }
+
+    public UUID getId() { return id; }
 
     public UUID getOppPartyId() {
         return oppPartyId;
@@ -131,17 +125,17 @@ public class Skirmish {
         return chShipId == id;
     }
 
-    public void handlePlayerQuit(ServerPlayerEntity player) {
+    public void handlePlayerQuit(MinecraftServer server, ServerPlayerEntity player) {
         UUID id = player.getUuid();
         if (challengers.remove(id)) {
             if (challengers.isEmpty()) {
-                SkirmishManager.INSTANCE.endSkirmish(player.getServer(), EndOfSkirmishType.OPPONENTS_WIN_KILLS);
+                SkirmishManager.INSTANCE.endSkirmish(server, EndOfSkirmishType.OPPONENTS_WIN_KILLS);
             }
         }
 
         if (opponents.remove(id)) {
             if (opponents.isEmpty()) {
-                SkirmishManager.INSTANCE.endSkirmish(player.getServer(), EndOfSkirmishType.CHALLENGERS_WIN_KILLS);
+                SkirmishManager.INSTANCE.endSkirmish(server, EndOfSkirmishType.CHALLENGERS_WIN_KILLS);
             }
         }
     }

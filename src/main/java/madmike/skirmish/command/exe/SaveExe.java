@@ -122,13 +122,6 @@ public class SaveExe {
             // Log scan
             VSSkirmish.LOGGER.info("[SKIRMISH] Scanning block at {} -> {}", blockPos, block);
 
-            // Check spawn block
-//            if (!foundSpawn.get() && block instanceof SkirmishSpawnBlock) {
-//                VSSkirmish.LOGGER.info("[SKIRMISH] FOUND SkirmishSpawnBlock at {}", blockPos);
-//                foundSpawn.set(true);
-//                spawnPos[0] = blockPos;
-//            }
-
             // Check no Balloon
             if (!foundBalloon.get() && block instanceof BalloonBlock) {
                 VSSkirmish.LOGGER.info("[SKIRMISH] FOUND Balloon at {}", blockPos);
@@ -144,13 +137,6 @@ public class SaveExe {
             return null;
         });
 
-//        if (spawnPos[0] == null) {
-//            VSSkirmish.LOGGER.info("[SKIRMISH] No SkirmishSpawnBlock detected on ship {}", ship.getId());
-//            player.sendMessage(Text.literal("§cCould not detect a Skirmish Spawn Block, place one where you would like to spawn during a skirmish."), false);
-//            return 0;
-//        }
-//
-//        VSSkirmish.LOGGER.info("[SKIRMISH] Using spawn block position {}", spawnPos[0]);
 
         if (!foundHelm.get()) {
             VSSkirmish.LOGGER.info("[SKIRMISH] No Eureka Helm detected on ship {}", ship.getId());

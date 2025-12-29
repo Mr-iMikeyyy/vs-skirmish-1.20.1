@@ -1,6 +1,7 @@
 package madmike.skirmish.command.exe;
 
 import com.mojang.brigadier.context.CommandContext;
+import madmike.cc.logic.BusyPlayers;
 import madmike.skirmish.logic.SkirmishChallenge;
 import madmike.skirmish.logic.SkirmishManager;
 import net.minecraft.server.MinecraftServer;
@@ -53,7 +54,20 @@ public class DenyExe {
         // ============================================================
 
         challenge.broadcastMsg(server, "The skirmish challenge was denied");
-        SkirmishManager.INSTANCE.setCurrentChallenge(null);
+
+        party.getOnlineMemberStream().forEach(p -> {
+            BusyPlayers.remove(p.getUuid());
+        });
+
+        IServerPartyAPI chParty = pm.getPartyById(challenge.getChPartyId());
+        if (chParty != null) {
+            chParty.getOnlineMemberStream().forEach(p -> {
+                BusyPlayers.remove(p.getUuid());
+            });
+        }
+
+        challenge.end(server, Text.literal("Opponents denied the challenge"));
+
         return 1;
     }
 }

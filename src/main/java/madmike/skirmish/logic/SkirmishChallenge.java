@@ -1,6 +1,6 @@
 package madmike.skirmish.logic;
 
-import madmike.skirmish.component.SkirmishComponents;
+import madmike.cc.logic.BusyPlayers;
 import madmike.skirmish.config.SkirmishConfig;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
@@ -65,25 +65,33 @@ public class SkirmishChallenge {
         return expiresAt < System.currentTimeMillis();
     }
 
-    public void onExpire(MinecraftServer server) {
+    public void end(MinecraftServer server, Text msg) {
         IPartyManagerAPI pm = OpenPACServerAPI.get(server).getPartyManager();
         IServerPartyAPI chParty = pm.getPartyById(chPartyId);
         IServerPartyAPI oppParty = pm.getPartyById(oppPartyId);
-        Text msg = Text.literal("The skirmish challenge has expired");
         if (chParty != null) {
-            chParty.getOnlineMemberStream().forEach(p -> p.sendMessage(msg));
+            chParty.getOnlineMemberStream().forEach(p -> {
+                if (msg != null) {
+                    p.sendMessage(msg);
+                }
+                BusyPlayers.remove(p.getUuid());
+            });
         }
         if (oppParty != null) {
-            oppParty.getOnlineMemberStream().forEach(p -> p.sendMessage(msg));
+            oppParty.getOnlineMemberStream().forEach(p -> {
+                if (msg != null) {
+                    p.sendMessage(msg);
+                }
+                BusyPlayers.remove(p.getUuid());
+            });
         }
-        SkirmishComponents.REFUNDS.get(server.getScoreboard()).refundPlayer(server, chLeaderId, wager);
+        SkirmishManager.INSTANCE.setCurrentChallenge(null);
     }
 
     public void handlePlayerQuit(MinecraftServer server, ServerPlayerEntity player) {
         UUID id = player.getUuid();
         if (chLeaderId.equals(id) || oppLeaderId.equals(id)) {
-            broadcastMsg(player.getServer(), "One of the party leaders has quit, cancelling skirmish challenge");
-            SkirmishComponents.REFUNDS.get(player.getScoreboard()).refundPlayer(server, chLeaderId, wager);
+            end(server, Text.literal("One of the party leaders of the challenge has left, cancelling skirmish"));
         }
     }
 

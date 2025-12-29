@@ -13,15 +13,6 @@ public class SkirmishComponents implements ScoreboardComponentInitializer{
         return new Identifier(VSSkirmish.MOD_ID, path);
     }
 
-    public static final ComponentKey<InventoryComponent> INVENTORY =
-            ComponentRegistryV3.INSTANCE.getOrCreate(id("inventory"), InventoryComponent.class);
-
-    public static final ComponentKey<RefundComponent> REFUNDS =
-            ComponentRegistryV3.INSTANCE.getOrCreate(id("refunds"), RefundComponent.class);
-
-    public static final ComponentKey<ReturnPointComponent> RETURN_POINTS =
-            ComponentRegistryV3.INSTANCE.getOrCreate(id("return_points"), ReturnPointComponent.class);
-
     public static final ComponentKey<StatsComponent> STATS =
             ComponentRegistryV3.INSTANCE.getOrCreate(id("stats"), StatsComponent.class);
 
@@ -31,9 +22,6 @@ public class SkirmishComponents implements ScoreboardComponentInitializer{
 
     @Override
     public void registerScoreboardComponentFactories(ScoreboardComponentFactoryRegistry scoreboardComponentFactoryRegistry) {
-        scoreboardComponentFactoryRegistry.registerScoreboardComponent(INVENTORY, InventoryComponent::new);
-        scoreboardComponentFactoryRegistry.registerScoreboardComponent(REFUNDS, RefundComponent::new);
-        scoreboardComponentFactoryRegistry.registerScoreboardComponent(RETURN_POINTS, ReturnPointComponent::new);
         scoreboardComponentFactoryRegistry.registerScoreboardComponent(STATS, StatsComponent::new);
         scoreboardComponentFactoryRegistry.registerScoreboardComponent(TOGGLE, ToggleComponent::new);
     }
