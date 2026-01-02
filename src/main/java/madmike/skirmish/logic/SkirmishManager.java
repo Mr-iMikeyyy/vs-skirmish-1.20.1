@@ -1,6 +1,7 @@
 package madmike.skirmish.logic;
 
 import com.glisco.numismaticoverhaul.ModComponents;
+import com.glisco.numismaticoverhaul.currency.CurrencyComponent;
 import g_mungus.vlib.v2.api.VLibAPI;
 import madmike.cc.component.CCComponents;
 import madmike.cc.component.components.BankComponent;
@@ -97,7 +98,7 @@ public class SkirmishManager {
         }
         if (currentChallenge != null) {
             if (currentChallenge.isExpired()) {
-                currentChallenge.end(server, Text.literal("The skirmish challenge has expired"));
+                currentChallenge.end(server, "The skirmish challenge has expired");
             }
         }
     }
@@ -105,12 +106,36 @@ public class SkirmishManager {
     public void startSkirmish(MinecraftServer server, ServerPlayerEntity chPartyLeader, ServerPlayerEntity oppPartyLeader) {
 
         // ============================================================
+        // CHECK CHALLENGE
+        // ============================================================
+
+        if (currentChallenge == null) {
+            return;
+        }
+
+        // ============================================================
+        // CHECK MONEY
+        // ============================================================
+
+        CurrencyComponent chWallet = ModComponents.CURRENCY.get(chPartyLeader);
+        CurrencyComponent oppWallet = ModComponents.CURRENCY.get(oppPartyLeader);
+        long bet = currentChallenge.getWager() * 10000L;
+        if (chWallet.getValue() < bet) {
+            currentChallenge.end(server, "Challenger didn't have enough gold in their wallet");
+            return;
+        }
+        if (oppWallet.getValue() < bet) {
+            currentChallenge.end(server, "Opponent didn't have enough gold in their wallet");
+            return;
+        }
+
+        // ============================================================
         // LOAD SKIRMISH DIMENSION
         // ============================================================
         ServerWorld skirmishDim = server.getWorld(SkirmishDimension.SKIRMISH_LEVEL_KEY);
 
         if (skirmishDim == null) {
-            currentChallenge.end(server, Text.literal("Couldn't load skirmish dimension"));
+            currentChallenge.end(server, "Couldn't load skirmish dimension");
             return;
         }
 
@@ -122,7 +147,7 @@ public class SkirmishManager {
         ServerShip chShip = VLibAPI.placeTemplateAsShip(currentChallenge.getChShipTemplate(), skirmishDim, chShipPos, false);
 
         if (chShip == null) {
-            currentChallenge.end(server, Text.literal("Couldn't load challengers ship"));
+            currentChallenge.end(server, "Couldn't load challengers ship");
             return;
         }
 
@@ -133,7 +158,7 @@ public class SkirmishManager {
         ServerShip oppShip = VLibAPI.placeTemplateAsShip(currentChallenge.getOppShipTemplate(), skirmishDim, oppShipPos, false);
 
         if (oppShip == null) {
-            currentChallenge.end(server, Text.literal("Couldn't load opponents ship"));
+            currentChallenge.end(server, "Couldn't load opponents ship");
             return;
         }
 
@@ -146,17 +171,20 @@ public class SkirmishManager {
 
         IServerPartyAPI chParty = pm.getPartyById(currentChallenge.getChPartyId());
         if (chParty == null) {
-            currentChallenge.end(server, Text.literal("Couldn't load challenging party"));
+            currentChallenge.end(server, "Couldn't load challenging party");
             return;
         }
 
         IServerPartyAPI oppParty = pm.getPartyById(currentChallenge.getOppPartyId());
         if (oppParty == null) {
-            currentChallenge.end(server, Text.literal("Couldn't load opponent party"));
+            currentChallenge.end(server, "Couldn't load opponent party");
             return;
         }
 
         // Challenger teleports
+
+        TeleportComponent tp = CCComponents.TP.get(sb);
+        InventoryComponent inv = CCComponents.INV.get(sb);
 
         AABBdc chShipWorldAABB = chShip.getWorldAABB();
 
@@ -176,9 +204,9 @@ public class SkirmishManager {
             player.setNoGravity(true);
             challengerIds.add(player.getUuid());
 
-            CCComponents.TP.get(sb).set(player.getUuid(), player.getBlockPos(), player.getServerWorld().getRegistryKey());
+            tp.set(player.getUuid(), player.getBlockPos(), player.getServerWorld().getRegistryKey());
 
-            CCComponents.INV.get(sb).saveInventory(player);
+            inv.saveInventory(player);
 
             player.teleport(skirmishDim, chSpawn.getX(), chSpawn.getY(), chSpawn.getZ(), player.getYaw(), player.getPitch());
         });
@@ -203,9 +231,9 @@ public class SkirmishManager {
             player.setNoGravity(true);
             opponentIds.add(player.getUuid());
 
-            CCComponents.TP.get(sb).set(player.getUuid(), player.getBlockPos(), player.getServerWorld().getRegistryKey());
+            tp.set(player.getUuid(), player.getBlockPos(), player.getServerWorld().getRegistryKey());
 
-            CCComponents.INV.get(sb).saveInventory(player);
+            inv.saveInventory(player);
 
             player.teleport(skirmishDim, oppSpawn.getX(), oppSpawn.getY(), oppSpawn.getZ(), player.getYaw(), player.getPitch());
         });
@@ -226,12 +254,10 @@ public class SkirmishManager {
                 currentChallenge.getWager()
         );
 
-        long bet = currentChallenge.getWager() * 10000L;
-
         ModComponents.CURRENCY.get(chPartyLeader).modify(-bet);
         ModComponents.CURRENCY.get(oppPartyLeader).modify(-bet);
 
-        CCComponents.BANK.get(server.getScoreboard()).record(currentSkirmish.getId(), currentChallenge.getChLeaderId(), currentChallenge.getOppLeaderId(), bet);
+        CCComponents.BANK.get(sb).record(currentSkirmish.getId(), currentChallenge.getChLeaderId(), currentChallenge.getOppLeaderId(), bet);
 
         currentChallenge = null;
         // ============================================================
@@ -257,14 +283,6 @@ public class SkirmishManager {
     public void endSkirmish(MinecraftServer server, EndOfSkirmishType type) {
 
         if (currentSkirmish == null) {
-            return;
-        }
-
-        // ============================================================
-        // GET DIMENSION
-        // ============================================================
-        ServerWorld skirmishDim = server.getWorld(SkirmishDimension.SKIRMISH_LEVEL_KEY);
-        if (skirmishDim == null) {
             return;
         }
 
@@ -356,9 +374,16 @@ public class SkirmishManager {
         }
 
         // ============================================================
+        // GET DIMENSION
+        // ============================================================
+        ServerWorld skirmishDim = server.getWorld(SkirmishDimension.SKIRMISH_LEVEL_KEY);
+        if (skirmishDim == null) {
+            return;
+        }
+
+        // ============================================================
         // DELETE SKIRMISH SHIPS
         // ============================================================
-
         List<Ship> ships = VSGameUtilsKt.getAllShips(skirmishDim).stream().toList();
         for (Ship ship : ships) {
             if (ship instanceof ServerShip serverShip) {
@@ -399,8 +424,6 @@ public class SkirmishManager {
                 VSSkirmish.LOGGER.error("[SKIRMISH] IOException during dimension wipe", e);
             }
         }
-
-
 
         tickCounter = 0;
         countdownTicks = 0;

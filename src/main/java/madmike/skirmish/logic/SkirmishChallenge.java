@@ -65,14 +65,14 @@ public class SkirmishChallenge {
         return expiresAt < System.currentTimeMillis();
     }
 
-    public void end(MinecraftServer server, Text msg) {
+    public void end(MinecraftServer server, String msg) {
         IPartyManagerAPI pm = OpenPACServerAPI.get(server).getPartyManager();
         IServerPartyAPI chParty = pm.getPartyById(chPartyId);
         IServerPartyAPI oppParty = pm.getPartyById(oppPartyId);
         if (chParty != null) {
             chParty.getOnlineMemberStream().forEach(p -> {
                 if (msg != null) {
-                    p.sendMessage(msg);
+                    p.sendMessage(Text.literal(msg));
                 }
                 BusyPlayers.remove(p.getUuid());
             });
@@ -80,7 +80,7 @@ public class SkirmishChallenge {
         if (oppParty != null) {
             oppParty.getOnlineMemberStream().forEach(p -> {
                 if (msg != null) {
-                    p.sendMessage(msg);
+                    p.sendMessage(Text.literal(msg));
                 }
                 BusyPlayers.remove(p.getUuid());
             });
@@ -91,7 +91,7 @@ public class SkirmishChallenge {
     public void handlePlayerQuit(MinecraftServer server, ServerPlayerEntity player) {
         UUID id = player.getUuid();
         if (chLeaderId.equals(id) || oppLeaderId.equals(id)) {
-            end(server, Text.literal("One of the party leaders of the challenge has left, cancelling skirmish"));
+            end(server, "One of the party leaders of the challenge has left, cancelling skirmish");
         }
     }
 

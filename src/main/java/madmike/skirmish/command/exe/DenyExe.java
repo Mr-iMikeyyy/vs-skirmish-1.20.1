@@ -66,7 +66,7 @@ public class DenyExe {
             });
         }
 
-        challenge.end(server, Text.literal("Opponents denied the challenge"));
+        challenge.end(server, "Opponents denied the challenge");
 
         return 1;
     }

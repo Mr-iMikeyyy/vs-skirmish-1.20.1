@@ -2,7 +2,7 @@ package madmike.skirmish.command.exe;
 
 import com.mojang.brigadier.context.CommandContext;
 import madmike.cc.component.CCComponents;
-import madmike.skirmish.component.SkirmishComponents;
+import madmike.cc.logic.BusyPlayers;
 import madmike.skirmish.logic.Skirmish;
 import madmike.skirmish.logic.SkirmishManager;
 import net.minecraft.server.PlayerManager;
@@ -44,7 +44,8 @@ public class SpectatePlayerExe {
         player.teleport(target.getServerWorld(), targetPos.getX(), targetPos.getY(), targetPos.getZ(), player.getYaw(), player.getPitch());
         player.changeGameMode(GameMode.SPECTATOR);
         skirmish.addSpectator(player.getUuid());
-        player.sendMessage(Text.literal("You have been teleported to " + name));
+        BusyPlayers.add(player.getUuid());
+        player.sendMessage(Text.literal("You are now spectating and have been teleported to " + name));
         return 1;
     }
 }

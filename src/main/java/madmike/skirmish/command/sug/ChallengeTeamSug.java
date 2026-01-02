@@ -22,23 +22,25 @@ import java.util.concurrent.CompletableFuture;
 public class ChallengeTeamSug {
     public static CompletableFuture<Suggestions> suggest(CommandContext<ServerCommandSource> src, SuggestionsBuilder builder) {
 
+        ServerPlayerEntity player = src.getSource().getPlayer();
+        if (player == null) {
+            return builder.buildFuture();
+        }
+
         MinecraftServer server = src.getSource().getServer();
         PlayerManager plm = server.getPlayerManager();
         OpenPACServerAPI api = OpenPACServerAPI.get(server);
         IPartyManagerAPI pm = api.getPartyManager();
         IPlayerConfigManagerAPI pc = api.getPlayerConfigs();
         Set<UUID> enabledParties = SkirmishComponents.TOGGLE.get(server.getScoreboard()).getEnabledParties();
-        ServerPlayerEntity player = src.getSource().getPlayer();
-        if (player == null) {
-            return builder.buildFuture();
-        }
+
         String playersPartyName = pc.getLoadedConfig(src.getSource().getPlayer().getUuid()).getEffective(PlayerConfigOptions.PARTY_NAME);
 
         for (UUID id : enabledParties) {
 
             IServerPartyAPI party = pm.getPartyById(id);
             if (party == null) {
-                SkirmishComponents.TOGGLE.get(server.getScoreboard()).setToggleOff(id);
+                SkirmishComponents.TOGGLE.get(server.getScoreboard()).toggleOff(id);
                 continue;
             }
 

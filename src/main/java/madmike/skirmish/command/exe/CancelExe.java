@@ -52,7 +52,7 @@ public class CancelExe {
         // DENY CHALLENGE
         // ============================================================
 
-        challenge.end(server, Text.literal("The skirmish challenge was cancelled"));
+        challenge.end(server, "The skirmish challenge was cancelled");
         return 1;
     }
 }

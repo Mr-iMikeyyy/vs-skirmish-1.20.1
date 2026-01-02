@@ -23,7 +23,7 @@ public class ToggleOffExe {
             return 0;
         }
 
-        SkirmishComponents.TOGGLE.get(ctx.getSource().getServer().getScoreboard()).setToggleOff(party.getId());
+        SkirmishComponents.TOGGLE.get(ctx.getSource().getServer().getScoreboard()).toggleOff(party.getId());
         party.getOnlineMemberStream().forEach(p -> p.sendMessage(Text.literal("Your party has turned off skirmishes")));
         return 1;
     }

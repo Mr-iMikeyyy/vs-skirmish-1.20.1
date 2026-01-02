@@ -23,8 +23,10 @@ public class JoinEvent {
 
             if (party != null) {
                 SkirmishChallenge challenge = SkirmishManager.INSTANCE.getCurrentChallenge();
-                if (challenge.getChPartyId().equals(party.getId()) || challenge.getOppPartyId().equals(party.getId())) {
-                    BusyPlayers.add(player.getUuid());
+                if (challenge != null) {
+                    if (challenge.getChPartyId().equals(party.getId()) || challenge.getOppPartyId().equals(party.getId())) {
+                        BusyPlayers.add(player.getUuid());
+                    }
                 }
             }
 

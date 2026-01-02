@@ -1,5 +1,7 @@
 package madmike.skirmish.logic;
 
+import madmike.cc.component.CCComponents;
+import madmike.cc.logic.BusyPlayers;
 import madmike.skirmish.config.SkirmishConfig;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
@@ -113,7 +115,7 @@ public class Skirmish {
             return false;
         }
 
-        // player not in a skirmish, return true to allow death
+        // player not in skirmish, return true to allow death
         return true;
     }
 
@@ -182,6 +184,15 @@ public class Skirmish {
         stillAlive.addAll(challengers);
         stillAlive.addAll(opponents);
         return stillAlive;
+    }
+
+    public boolean isPlayerSpectating(UUID id) {
+        return spectators.contains(id);
+    }
+
+    public void removeSpectator(MinecraftServer server, ServerPlayerEntity player) {
+        CCComponents.TP.get(server.getScoreboard()).tpPlayerBack(player);
+        spectators.remove(player.getUuid());
     }
 
 //    public void runDistanceCheck(MinecraftServer server) {

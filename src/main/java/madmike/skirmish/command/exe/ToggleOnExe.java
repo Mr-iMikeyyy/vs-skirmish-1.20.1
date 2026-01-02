@@ -36,7 +36,7 @@ public class ToggleOnExe {
             return 0;
         }
 
-        SkirmishComponents.TOGGLE.get(ctx.getSource().getServer().getScoreboard()).setToggleOn(party.getId());
+        SkirmishComponents.TOGGLE.get(ctx.getSource().getServer().getScoreboard()).toggleOn(party.getId());
         party.getOnlineMemberStream().forEach(p -> p.sendMessage(Text.literal("Your party has turned on skirmishes")));
         return 1;
     }

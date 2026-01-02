@@ -28,11 +28,11 @@ public class ToggleComponent implements ComponentV3 {
     // Toggle API
     // ============================================================
 
-    public void setToggleOn(UUID partyId) {
+    public void toggleOn(UUID partyId) {
         enabledParties.add(partyId);
     }
 
-    public void setToggleOff(UUID partyId) {
+    public void toggleOff(UUID partyId) {
         enabledParties.remove(partyId);
     }
 

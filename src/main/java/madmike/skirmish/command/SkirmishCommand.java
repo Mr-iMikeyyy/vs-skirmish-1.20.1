@@ -5,10 +5,7 @@ import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import madmike.cc.component.CCComponents;
 import madmike.skirmish.command.exe.*;
-import madmike.skirmish.command.req.NotBusyReq;
-import madmike.skirmish.command.req.PartyLeaderReq;
-import madmike.skirmish.command.req.PartyReq;
-import madmike.skirmish.command.req.SkirmishOngoingReq;
+import madmike.skirmish.command.req.*;
 import madmike.skirmish.command.sug.ChallengeTeamSug;
 import madmike.skirmish.command.sug.SpectatePlayerSug;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
@@ -144,6 +141,14 @@ public class SkirmishCommand {
                                     .suggests(SpectatePlayerSug::suggest)
                                     .executes(SpectatePlayerExe::execute)
                             )
+                    )
+
+                    // ============================================================
+                    // /skirmish spectate
+                    // ============================================================
+                    .then(literal("leave")
+                            .requires(IsSpectatingReq::require)
+                            .executes(LeaveExe::execute)
                     )
 
                     // ============================================================
