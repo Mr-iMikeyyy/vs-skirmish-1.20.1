@@ -43,10 +43,6 @@ public class SkirmishManager {
 
     private Skirmish currentSkirmish;
 
-    private int countdownTicks = 0;
-
-    private boolean isCountingDown = false;
-
     private static final int CHECK_INTERVAL_TICKS = 200; // 10 seconds
     private static int tickCounter = 0;
 
@@ -65,7 +61,8 @@ public class SkirmishManager {
             if (currentSkirmish.isExpired()) {
                 endSkirmish(server, EndOfSkirmishType.TIME);
             }
-            if (isCountingDown) {
+            if (currentSkirmish.getIsCountingDown()) {
+                currentSkirmish.tickCountdown();
                 countdownTicks--;
                 if (countdownTicks % 20 == 0) {
                     int secondsLeft = countdownTicks / 20;
@@ -267,10 +264,7 @@ public class SkirmishManager {
         startCountdown(5);
     }
 
-    public void startCountdown(int seconds) {
-        this.countdownTicks = seconds * 20;
-        isCountingDown = true;
-    }
+
 
     public void endSkirmish(MinecraftServer server, EndOfSkirmishType type) {
 

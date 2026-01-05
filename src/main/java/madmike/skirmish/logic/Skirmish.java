@@ -36,14 +36,17 @@ public class Skirmish {
     private final Set<UUID> challengers = new HashSet<>();
     private UUID chPartyId;
     private UUID chLeaderId;
-    private final long chShipId;
+    private long chShipId;
 
     private final Set<UUID> opponents = new HashSet<>();
     private UUID oppPartyId;
     private UUID oppLeaderId;
-    private final long oppShipId;
+    private long oppShipId;
 
     private int wager;
+
+    private int countdownTicks = 0;
+    private boolean isCountingDown = false;
 
     private final Set<UUID> spectators;
 
@@ -205,7 +208,16 @@ public class Skirmish {
             }
         });
 
+        startCountdown(5);
+
         return true;
+    }
+    public void startCountdown(int seconds) {
+        this.countdownTicks = seconds * 20;
+        isCountingDown = true;
+    }
+    public boolean getIsCountingDown() {
+        return isCountingDown;
     }
 
     public UUID getId() { return id; }
