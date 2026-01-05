@@ -41,8 +41,6 @@ import java.util.stream.Stream;
 
 public class SkirmishManager {
 
-    private SkirmishChallenge currentChallenge;
-
     private Skirmish currentSkirmish;
 
     private int countdownTicks = 0;
@@ -57,8 +55,6 @@ public class SkirmishManager {
     /* ================= Constructor ================= */
 
     private SkirmishManager() {}
-
-    public SkirmishChallenge getCurrentChallenge() { return currentChallenge; }
 
     public Skirmish getCurrentSkirmish() {
         return currentSkirmish;
@@ -96,14 +92,22 @@ public class SkirmishManager {
 //                currentSkirmish.runDistanceCheck(server);
 //            }
         }
-        if (currentChallenge != null) {
-            if (currentChallenge.isExpired()) {
-                currentChallenge.end(server, "The skirmish challenge has expired");
-            }
-        }
     }
 
-    public void startSkirmish(MinecraftServer server, ServerPlayerEntity chPartyLeader, ServerPlayerEntity oppPartyLeader) {
+    public void tryToStartSkirmish(MinecraftServer server, ServerPlayerEntity chPartyLeader, ServerPlayerEntity oppPartyLeader) {
+        SkirmishChallenge challenge = SkirmishChallengeManager.INSTANCE.getOldestAcceptedChallenge();
+
+        if (challenge == null) {
+            return;
+        }
+
+        Skirmish skirmish = new Skirmish();
+
+        boolean started = skirmish.start(server, challenge);
+
+        if (started) {
+            currentSkirmish = skirmish;
+        }
 
         // ============================================================
         // CHECK CHALLENGE
@@ -187,17 +191,11 @@ public class SkirmishManager {
         InventoryComponent inv = CCComponents.INV.get(sb);
 
         AABBdc chShipWorldAABB = chShip.getWorldAABB();
-
         double chLength = chShipWorldAABB.maxZ() - chShipWorldAABB.minZ();
-
         double chSafe = chLength / 2.0 + 10.0; // 10 blocks of air buffer
-
         Vector3d chShipCenter = chShipWorldAABB.center(new Vector3d());
-
         BlockPos chSpawn = new BlockPos(0, 64, (int) (chShipCenter.z - chSafe));
-
         skirmishDim.getChunk(chSpawn.getX() >> 4, chSpawn.getZ() >> 4, ChunkStatus.FULL, true);
-
         Set<UUID> challengerIds = new HashSet<>();
 
         chParty.getOnlineMemberStream().forEach(player -> {
@@ -214,17 +212,11 @@ public class SkirmishManager {
         // Opponent teleports
 
         AABBdc oppShipWorldAABB = oppShip.getWorldAABB();
-
         double oppLength = oppShipWorldAABB.maxZ() - oppShipWorldAABB.minZ();
-
         double oppSafe = oppLength / 2.0 + 10.0; // 10 blocks of air buffer
-
         Vector3d oppShipCenter = oppShipWorldAABB.center(new Vector3d());
-
         BlockPos oppSpawn = new BlockPos(0, 64, (int) (oppShipCenter.z + oppSafe));
-
         skirmishDim.getChunk(oppSpawn.getX() >> 4, oppSpawn.getZ() >> 4, ChunkStatus.FULL, true);
-
         Set<UUID> opponentIds = new HashSet<>();
 
         oppParty.getOnlineMemberStream().forEach(player -> {
@@ -462,9 +454,6 @@ public class SkirmishManager {
     }
 
     public void handlePlayerQuit(MinecraftServer server, ServerPlayerEntity player) {
-        if (currentChallenge != null) {
-            currentChallenge.handlePlayerQuit(server, player);
-        }
         if (currentSkirmish != null) {
             currentSkirmish.handlePlayerQuit(server, player);
         }

@@ -1,6 +1,7 @@
 package madmike.skirmish.logic;
 
 import madmike.cc.logic.BusyPlayers;
+import madmike.cc.logic.Reason;
 import madmike.skirmish.config.SkirmishConfig;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
@@ -13,36 +14,41 @@ import xaero.pac.common.server.parties.party.api.IServerPartyAPI;
 import java.util.UUID;
 
 public class SkirmishChallenge {
+
     private final UUID chPartyId;
-    private final UUID chLeaderId;
     private final StructureTemplate chShipTemplate;
 
     private final UUID oppPartyId;
-    private final UUID oppLeaderId;
     private final StructureTemplate oppShipTemplate;
 
     private final int wager;
     private final long expiresAt;
 
-    public SkirmishChallenge(UUID chPartyId, UUID chLeaderId, StructureTemplate chShipTemplate, UUID oppPartyId, UUID oppLeaderId, StructureTemplate oppShip, int wager) {
+    public SkirmishChallenge(UUID chPartyId, StructureTemplate chShipTemplate, UUID oppPartyId, StructureTemplate oppShip, int wager) {
         this.chPartyId = chPartyId;
-        this.chLeaderId = chLeaderId;
         this.chShipTemplate = chShipTemplate;
 
         this.oppPartyId = oppPartyId;
-        this.oppLeaderId = oppLeaderId;
         this.oppShipTemplate = oppShip;
 
         this.wager = wager;
         this.expiresAt = (SkirmishConfig.skirmishChallengeMaxTime * 1000L) + System.currentTimeMillis();
     }
 
-    public UUID getChLeaderId() {
-        return chLeaderId;
+    public ServerPlayerEntity getChLeader(MinecraftServer server) {
+        IServerPartyAPI party = OpenPACServerAPI.get(server).getPartyManager().getPartyById(chPartyId);
+        if (party == null) {
+            return null;
+        }
+        return server.getPlayerManager().getPlayer(party.getOwner().getUUID());
     }
 
-    public UUID getOppLeaderId() {
-        return oppLeaderId;
+    public ServerPlayerEntity getOppLeader(MinecraftServer server) {
+        IServerPartyAPI party = OpenPACServerAPI.get(server).getPartyManager().getPartyById(oppPartyId);
+        if (party == null) {
+            return null;
+        }
+        return server.getPlayerManager().getPlayer(party.getOwner().getUUID());
     }
 
     public UUID getChPartyId() {
@@ -74,7 +80,7 @@ public class SkirmishChallenge {
                 if (msg != null) {
                     p.sendMessage(Text.literal(msg));
                 }
-                BusyPlayers.remove(p.getUuid());
+                BusyPlayers.remove(p.getUuid(), Reason.SKIRMISH);
             });
         }
         if (oppParty != null) {
@@ -82,17 +88,10 @@ public class SkirmishChallenge {
                 if (msg != null) {
                     p.sendMessage(Text.literal(msg));
                 }
-                BusyPlayers.remove(p.getUuid());
+                BusyPlayers.remove(p.getUuid(), Reason.SKIRMISH);
             });
         }
         SkirmishManager.INSTANCE.setCurrentChallenge(null);
-    }
-
-    public void handlePlayerQuit(MinecraftServer server, ServerPlayerEntity player) {
-        UUID id = player.getUuid();
-        if (chLeaderId.equals(id) || oppLeaderId.equals(id)) {
-            end(server, "One of the party leaders of the challenge has left, cancelling skirmish");
-        }
     }
 
     public void broadcastMsg(MinecraftServer server, String msg) {

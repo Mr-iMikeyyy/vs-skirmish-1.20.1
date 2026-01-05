@@ -1,13 +1,25 @@
 package madmike.skirmish.logic;
 
+import com.glisco.numismaticoverhaul.ModComponents;
+import com.glisco.numismaticoverhaul.currency.CurrencyComponent;
+import g_mungus.vlib.v2.api.VLibAPI;
 import madmike.cc.component.CCComponents;
+import madmike.cc.component.components.InventoryComponent;
+import madmike.cc.component.components.TeleportComponent;
 import madmike.cc.logic.BusyPlayers;
 import madmike.skirmish.config.SkirmishConfig;
+import madmike.skirmish.dimension.SkirmishDimension;
+import net.minecraft.scoreboard.Scoreboard;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.server.world.ServerWorld;
 import net.minecraft.text.Text;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.GameMode;
+import net.minecraft.world.chunk.ChunkStatus;
+import org.joml.Vector3d;
+import org.joml.primitives.AABBdc;
+import org.valkyrienskies.core.api.ships.ServerShip;
 import xaero.pac.common.server.api.OpenPACServerAPI;
 import xaero.pac.common.server.parties.party.api.IPartyManagerAPI;
 import xaero.pac.common.server.parties.party.api.IServerPartyAPI;
@@ -19,38 +31,181 @@ import java.util.UUID;
 public class Skirmish {
 
     private final UUID id;
+    private final long expiresAt;
 
-    private final Set<UUID> challengers;
-    private final UUID chPartyId;
-    private final UUID chLeaderId;
+    private final Set<UUID> challengers = new HashSet<>();
+    private UUID chPartyId;
+    private UUID chLeaderId;
+    private final long chShipId;
 
-    private final Set<UUID> opponents;
-    private final UUID oppPartyId;
-    private final UUID oppLeaderId;
+    private final Set<UUID> opponents = new HashSet<>();
+    private UUID oppPartyId;
+    private UUID oppLeaderId;
+    private final long oppShipId;
+
+    private int wager;
 
     private final Set<UUID> spectators;
 
-    private final long chShipId;
-
-    private final long oppShipId;
-
-    private final int wager;
-
-    private final long expiresAt;
-
-    public Skirmish(Set<UUID> challengers, UUID chPartyId, UUID chLeaderId, Set<UUID> opponents, UUID oppPartyId, UUID oppLeaderId, long chShipId, long oppShipId, int wager) {
+    public Skirmish() {
         this.id = UUID.randomUUID();
-        this.challengers = challengers;
-        this.chPartyId = chPartyId;
-        this.chLeaderId = chLeaderId;
-        this.opponents = opponents;
-        this.oppPartyId = oppPartyId;
-        this.oppLeaderId = oppLeaderId;
-        this.chShipId = chShipId;
-        this.oppShipId = oppShipId;
-        this.wager = wager;
         this.expiresAt = (SkirmishConfig.skirmishMaxTime * 1000L) + System.currentTimeMillis();
         this.spectators = new HashSet<>();
+    }
+
+    /* ---------- start ---------- */
+    public boolean start(MinecraftServer server, SkirmishChallenge challenge) {
+        this.wager = challenge.getWager();
+        this.chPartyId = challenge.getChPartyId();
+        this.oppPartyId = challenge.getOppPartyId();
+
+        // ============================================================
+        // CHECK LEADERS
+        // ============================================================
+
+        ServerPlayerEntity chLeader = challenge.getChLeader(server);
+        ServerPlayerEntity oppLeader = challenge.getOppLeader(server);
+        if (chLeader == null || oppLeader == null) {
+            challenge.end(server, "Couldn't get one of the party leaders, cancelling match.");
+            return false;
+        }
+        this.chLeaderId = chLeader.getUuid();
+        this.oppLeaderId = oppLeader.getUuid();
+
+        // ============================================================
+        // CHECK WAGER
+        // ============================================================
+
+        CurrencyComponent chWallet = ModComponents.CURRENCY.get(chLeader);
+        CurrencyComponent oppWallet = ModComponents.CURRENCY.get(oppLeader);
+        long bet = wager * 10000L;
+        if (chWallet.getValue() < bet) {
+            challenge.end(server, "Challenger didn't have enough gold in their wallet");
+            return false;
+        }
+        if (oppWallet.getValue() < bet) {
+            challenge.end(server, "Opponent didn't have enough gold in their wallet");
+            return false;
+        }
+
+        // ============================================================
+        // LOAD SKIRMISH DIMENSION
+        // ============================================================
+        ServerWorld skirmishDim = server.getWorld(SkirmishDimension.SKIRMISH_LEVEL_KEY);
+
+        if (skirmishDim == null) {
+            challenge.end(server, "Couldn't load skirmish dimension");
+            return false;
+        }
+
+        // ============================================================
+        // PLACE CHALLENGER SHIP
+        // ============================================================
+
+        BlockPos chShipPos = new BlockPos(0, 31, -100);
+        ServerShip chShip = VLibAPI.placeTemplateAsShip(challenge.getChShipTemplate(), skirmishDim, chShipPos, false);
+
+        if (chShip == null) {
+            challenge.end(server, "Couldn't load challengers ship");
+            return false;
+        }
+
+        // ============================================================
+        // PLACE OPPONENT SHIP
+        // ============================================================
+        BlockPos oppShipPos = new BlockPos(0, 31, 100);
+        ServerShip oppShip = VLibAPI.placeTemplateAsShip(challenge.getOppShipTemplate(), skirmishDim, oppShipPos, false);
+
+        if (oppShip == null) {
+            challenge.end(server, "Couldn't load opponents ship");
+            return false;
+        }
+
+        // ============================================================
+        // LOAD PARTIES
+        // ============================================================
+
+        IPartyManagerAPI pm = OpenPACServerAPI.get(server).getPartyManager();
+
+        IServerPartyAPI chParty = pm.getPartyById(challenge.getChPartyId());
+        if (chParty == null) {
+            challenge.end(server, "Couldn't load challenging party");
+            return false;
+        }
+
+        IServerPartyAPI oppParty = pm.getPartyById(challenge.getOppPartyId());
+        if (oppParty == null) {
+            challenge.end(server, "Couldn't load opponent party");
+            return false;
+        }
+
+        // ============================================================
+        // TP PLAYERS AND SAVE INV
+        // ============================================================
+
+        Scoreboard sb = server.getScoreboard();
+
+        TeleportComponent tp = CCComponents.TP.get(sb);
+        InventoryComponent inv = CCComponents.INV.get(sb);
+
+        AABBdc chShipWorldAABB = chShip.getWorldAABB();
+        double chLength = chShipWorldAABB.maxZ() - chShipWorldAABB.minZ();
+        double chSafe = chLength / 2.0 + 10.0; // 10 blocks of air buffer
+        Vector3d chShipCenter = chShipWorldAABB.center(new Vector3d());
+        BlockPos chSpawn = new BlockPos(0, 64, (int) (chShipCenter.z - chSafe));
+        skirmishDim.getChunk(chSpawn.getX() >> 4, chSpawn.getZ() >> 4, ChunkStatus.FULL, true);
+
+        chParty.getOnlineMemberStream().forEach(player -> {
+            player.setNoGravity(true);
+            challengers.add(player.getUuid());
+
+            tp.set(player.getUuid(), player.getBlockPos(), player.getServerWorld().getRegistryKey());
+
+            inv.saveInventory(player);
+
+            player.teleport(skirmishDim, chSpawn.getX(), chSpawn.getY(), chSpawn.getZ(), player.getYaw(), player.getPitch());
+        });
+
+        AABBdc oppShipWorldAABB = oppShip.getWorldAABB();
+        double oppLength = oppShipWorldAABB.maxZ() - oppShipWorldAABB.minZ();
+        double oppSafe = oppLength / 2.0 + 10.0; // 10 blocks of air buffer
+        Vector3d oppShipCenter = oppShipWorldAABB.center(new Vector3d());
+        BlockPos oppSpawn = new BlockPos(0, 64, (int) (oppShipCenter.z + oppSafe));
+        skirmishDim.getChunk(oppSpawn.getX() >> 4, oppSpawn.getZ() >> 4, ChunkStatus.FULL, true);
+
+        oppParty.getOnlineMemberStream().forEach(player -> {
+            player.setNoGravity(true);
+            opponents.add(player.getUuid());
+
+            tp.set(player.getUuid(), player.getBlockPos(), player.getServerWorld().getRegistryKey());
+
+            inv.saveInventory(player);
+
+            player.teleport(skirmishDim, oppSpawn.getX(), oppSpawn.getY(), oppSpawn.getZ(), player.getYaw(), player.getPitch());
+        });
+
+
+
+        // ============================================================
+        // TAKE MONEY
+        // ============================================================
+        chWallet.modify(-bet);
+        oppWallet.modify(-bet);
+
+        // ============================================================
+        // BROADCAST
+        // ============================================================
+
+        challenge.broadcastMsg(server, "Skirmish Starting!");
+
+        server.getPlayerManager().getPlayerList().forEach(player -> {
+            UUID playerId = player.getUuid();
+            if (!challengers.contains(playerId) && !opponents.contains(playerId)) {
+                player.sendMessage(Text.literal("A skirmish has started! Use /skirmish spectate to watch!"));
+            }
+        });
+
+        return true;
     }
 
     public UUID getId() { return id; }
