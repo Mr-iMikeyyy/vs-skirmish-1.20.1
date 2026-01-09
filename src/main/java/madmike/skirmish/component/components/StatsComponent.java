@@ -192,10 +192,6 @@ public class StatsComponent implements ComponentV3 {
         tag.put("skirmish_stats", list);
     }
 
-    public Set<UUID> getAllPartyIds() {
-        return stats.keySet();
-    }
-
     public void resetAllStats() {
         stats.clear();
     }
