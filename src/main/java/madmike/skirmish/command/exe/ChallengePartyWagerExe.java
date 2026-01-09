@@ -6,10 +6,11 @@ import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import madmike.cc.logic.BusyPlayers;
+import madmike.cc.logic.Reason;
 import madmike.skirmish.VSSkirmish;
 import madmike.skirmish.component.SkirmishComponents;
 import madmike.skirmish.logic.SkirmishChallenge;
-import madmike.skirmish.logic.SkirmishManager;
+import madmike.skirmish.logic.SkirmishChallengeManager;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.server.network.ServerPlayerEntity;
@@ -28,22 +29,35 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
-public class ChallengeTeamWagerExe {
-    public static int execute(CommandContext<ServerCommandSource> ctx) {
+public class ChallengePartyWagerExe {
 
-        ServerPlayerEntity player = ctx.getSource().getPlayer();
+    public static int executeNoWager(CommandContext<ServerCommandSource> ctx) {
+        return executeChallenge(
+                ctx.getSource(),
+                StringArgumentType.getString(ctx, "party"),
+                0
+        );
+    }
+
+    public static int executeWager(CommandContext<ServerCommandSource> ctx) {
+        return executeChallenge(
+                ctx.getSource(),
+                StringArgumentType.getString(ctx, "party"),
+                IntegerArgumentType.getInteger(ctx, "wager")
+        );
+    }
+
+
+    public static int executeChallenge(ServerCommandSource src, String targetName, int wagerInt) {
+
+
+        ServerPlayerEntity player = src.getPlayer();
         if (player == null) {
-            ctx.getSource().sendMessage(Text.literal("You must be a player to use this command"));
+            src.sendMessage(Text.literal("You must be a player to use this command"));
             return 0;
         }
 
-        SkirmishManager sm = SkirmishManager.INSTANCE;
-        if (sm.hasChallengeOrSkirmish()) {
-            player.sendMessage(Text.literal("There is already a skirmish or pending challenge, please try again later."));
-            return 0;
-        }
-
-        MinecraftServer server = ctx.getSource().getServer();
+        MinecraftServer server = src.getServer();
         OpenPACServerAPI api = OpenPACServerAPI.get(server);
         IPartyManagerAPI pm = api.getPartyManager();
 
@@ -53,8 +67,21 @@ public class ChallengeTeamWagerExe {
             return 0;
         }
 
-        if (!SkirmishComponents.TOGGLE.get(server.getScoreboard()).isEnabled(party.getId())) {
+        if (!SkirmishComponents.TOGGLE.get(server.getScoreboard()).isReady(party.getId())) {
             player.sendMessage(Text.literal("Your party has not enabled skirmishes, use /skirmish toggleOn to turn on skirmishes for your party."));
+            return 0;
+        }
+
+        Set<UUID> busyCh = new HashSet<>();
+
+        party.getOnlineMemberStream().forEach( p -> {
+            if (BusyPlayers.isBusy(p.getUuid())) {
+                busyCh.add(player.getUuid());
+            }
+        });
+
+        if (!busyCh.isEmpty()) {
+            player.sendMessage(Text.literal("One or more members of your party are busy doing something else"));
             return 0;
         }
 
@@ -67,8 +94,6 @@ public class ChallengeTeamWagerExe {
             return 0;
         }
 
-        String teamName = StringArgumentType.getString(ctx, "team");
-
         IPlayerConfigManagerAPI pc = api.getPlayerConfigs();
 
         // Collect all party owners
@@ -76,6 +101,7 @@ public class ChallengeTeamWagerExe {
         pm.getAllStream().forEach(t -> ownerIds.add(t.getOwner().getUUID()));
 
         IServerPartyAPI oppParty = null;
+        ServerPlayerEntity oppLeader = null;
 
         for (UUID id : ownerIds) {
             ServerPlayerEntity otherPlayer = server.getPlayerManager().getPlayer(id);
@@ -85,8 +111,9 @@ public class ChallengeTeamWagerExe {
                     partyName = party.getDefaultName();
                 }
 
-                if (partyName.equals(teamName)) {
+                if (partyName.equals(targetName)) {
                     oppParty = api.getPartyManager().getPartyByOwner(id);
+                    oppLeader = otherPlayer;
                     break;
                 }
             }
@@ -97,13 +124,20 @@ public class ChallengeTeamWagerExe {
             return 0;
         }
 
-        ServerPlayerEntity oppLeader = server.getPlayerManager().getPlayer(oppParty.getOwner().getUUID());
-        if (oppLeader == null) {
-            player.sendMessage(Text.literal("Opponent team leader is offline"));
+        Set<UUID> busyOpp = new HashSet<>();
+
+        party.getOnlineMemberStream().forEach(p -> {
+            if (BusyPlayers.isBusy(player.getUuid())) {
+                busyOpp.add(player.getUuid());
+            }
+        });
+
+        if (!busyOpp.isEmpty()) {
+            player.sendMessage(Text.literal("One or more members of the other party are busy doing something else"));
             return 0;
         }
 
-        if (!SkirmishComponents.TOGGLE.get(server.getScoreboard()).isEnabled(oppParty.getId())) {
+        if (!SkirmishComponents.TOGGLE.get(server.getScoreboard()).isReady(oppParty.getId())) {
             player.sendMessage(Text.literal("Opponent party has not yet enabled skirmishes"));
             return 0;
         }
@@ -117,31 +151,31 @@ public class ChallengeTeamWagerExe {
         }
 
         // WAGER CHECK
-        int wagerInt = IntegerArgumentType.getInteger(ctx, "wager");
-        long wager = wagerInt * 10000L;
+        if (wagerInt > 0) {
+            long wager = wagerInt * 10000L;
 
-        CurrencyComponent cc = ModComponents.CURRENCY.get(player);
-        long wallet = cc.getValue();
+            CurrencyComponent cc = ModComponents.CURRENCY.get(player);
+            long wallet = cc.getValue();
 
-        if (wallet < wager) {
+            if (wallet < wager) {
 
-            player.sendMessage(Text.literal("You don't have enough gold in your wallet for that wager!"));
-            return 0;
+                player.sendMessage(Text.literal("You don't have enough gold in your wallet for that wager!"));
+                return 0;
+            }
         }
+
 
         // CREATE CHALLENGE
 
         SkirmishChallenge challenge = new SkirmishChallenge(
                 party.getId(),
-                player.getUuid(),
                 ship.get(),
                 oppParty.getId(),
-                oppLeader.getUuid(),
                 oppShip.get(),
                 wagerInt
         );
 
-        sm.setCurrentChallenge(challenge);
+        SkirmishChallengeManager.INSTANCE.addChallenge(challenge);
 
         // ALERT OPPONENT PARTY
         String chPartyName = pc.getLoadedConfig(oppLeader.getUuid()).getEffective(PlayerConfigOptions.PARTY_NAME);
@@ -154,14 +188,14 @@ public class ChallengeTeamWagerExe {
                 p.sendMessage(Text.literal("Your party has been challenged to a duel by " + finalChPartyName +
                         "! With a wager of " + wagerInt + " gold! Party leader, use /skirmish accept or /skirmish deny.")
                 );
-                BusyPlayers.add(p.getUuid());
+                BusyPlayers.add(p.getUuid(), Reason.SKIRMISH);
             }
         );
 
         // ALERT CHALLENGER PARTY
         party.getOnlineMemberStream().forEach(p -> {
-                p.sendMessage(Text.literal("§eChallenging §6" + teamName + "§e to a skirmish..."));
-                BusyPlayers.add(p.getUuid());
+                p.sendMessage(Text.literal("§eChallenging §6" + targetName + "§e to a skirmish..."));
+                BusyPlayers.add(p.getUuid(), Reason.SKIRMISH);
             }
         );
 

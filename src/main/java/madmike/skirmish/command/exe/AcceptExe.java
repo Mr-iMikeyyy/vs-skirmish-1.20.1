@@ -4,7 +4,9 @@ import com.glisco.numismaticoverhaul.ModComponents;
 import com.glisco.numismaticoverhaul.currency.CurrencyComponent;
 import com.mojang.brigadier.context.CommandContext;
 import madmike.skirmish.logic.SkirmishChallenge;
+import madmike.skirmish.logic.SkirmishChallengeManager;
 import madmike.skirmish.logic.SkirmishManager;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
@@ -23,7 +25,8 @@ public class AcceptExe {
         // ============================================================
         // PARTY DATA
         // ============================================================
-        OpenPACServerAPI api = OpenPACServerAPI.get(ctx.getSource().getServer());
+        MinecraftServer server = ctx.getSource().getServer();
+        OpenPACServerAPI api = OpenPACServerAPI.get(server);
         IPartyManagerAPI pm = api.getPartyManager();
         IServerPartyAPI party = pm.getPartyByOwner(opp.getUuid());
 
@@ -35,14 +38,9 @@ public class AcceptExe {
         // ============================================================
         // VALIDATE CHALLENGE
         // ============================================================
-        SkirmishChallenge challenge = SkirmishManager.INSTANCE.getCurrentChallenge();
+        SkirmishChallenge challenge = SkirmishChallengeManager.INSTANCE.getIncomingChallengeFor(party.getId());
 
         if (challenge == null) {
-            opp.sendMessage(Text.literal("§cThere are no challenges to accept"), false);
-            return 0;
-        }
-
-        if (!challenge.getOppPartyId().equals(party.getId())) {
             opp.sendMessage(Text.literal("§cThere are no challenges to accept"), false);
             return 0;
         }
@@ -51,7 +49,7 @@ public class AcceptExe {
         // CHECK WAGER
         // ============================================================
 
-        ServerPlayerEntity ch = ctx.getSource().getServer().getPlayerManager().getPlayer(challenge.getChLeaderId());
+        ServerPlayerEntity ch = challenge.getChLeader(server);
         if (ch == null) {
             opp.sendMessage(Text.literal("Could not find challenger"));
             return 0;
@@ -77,7 +75,7 @@ public class AcceptExe {
         // START SKIRMISH
         // ============================================================
 
-        SkirmishManager.INSTANCE.startSkirmish(ctx.getSource().getServer(), ch, opp);
+        challenge.accept();
         return 1;
     }
 

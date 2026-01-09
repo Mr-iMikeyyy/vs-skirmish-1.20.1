@@ -4,29 +4,44 @@ import com.glisco.numismaticoverhaul.ModComponents;
 import com.glisco.numismaticoverhaul.currency.CurrencyComponent;
 import g_mungus.vlib.v2.api.VLibAPI;
 import madmike.cc.component.CCComponents;
+import madmike.cc.component.components.BankComponent;
 import madmike.cc.component.components.InventoryComponent;
 import madmike.cc.component.components.TeleportComponent;
 import madmike.cc.logic.BusyPlayers;
+import madmike.cc.logic.Reason;
+import madmike.skirmish.VSSkirmish;
+import madmike.skirmish.component.SkirmishComponents;
+import madmike.skirmish.component.components.StatsComponent;
 import madmike.skirmish.config.SkirmishConfig;
 import madmike.skirmish.dimension.SkirmishDimension;
+import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.scoreboard.Scoreboard;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.PlayerManager;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.text.Text;
+import net.minecraft.util.WorldSavePath;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.GameMode;
 import net.minecraft.world.chunk.ChunkStatus;
 import org.joml.Vector3d;
 import org.joml.primitives.AABBdc;
 import org.valkyrienskies.core.api.ships.ServerShip;
+import org.valkyrienskies.core.api.ships.Ship;
+import org.valkyrienskies.mod.common.VSGameUtilsKt;
 import xaero.pac.common.server.api.OpenPACServerAPI;
 import xaero.pac.common.server.parties.party.api.IPartyManagerAPI;
 import xaero.pac.common.server.parties.party.api.IServerPartyAPI;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 public class Skirmish {
 
@@ -36,21 +51,24 @@ public class Skirmish {
     private final Set<UUID> challengers = new HashSet<>();
     private UUID chPartyId;
     private UUID chLeaderId;
-    private final long chShipId;
+    private long chShipId;
 
     private final Set<UUID> opponents = new HashSet<>();
     private UUID oppPartyId;
     private UUID oppLeaderId;
-    private final long oppShipId;
+    private long oppShipId;
 
     private int wager;
 
-    private final Set<UUID> spectators;
+    private int countdownTicks = 200;
+
+    private boolean isCountingdown = true;
+
+    private final Set<UUID> spectators = new HashSet<>();
 
     public Skirmish() {
         this.id = UUID.randomUUID();
         this.expiresAt = (SkirmishConfig.skirmishMaxTime * 1000L) + System.currentTimeMillis();
-        this.spectators = new HashSet<>();
     }
 
     /* ---------- start ---------- */
@@ -110,6 +128,8 @@ public class Skirmish {
             return false;
         }
 
+        chShipId = chShip.getId();
+
         // ============================================================
         // PLACE OPPONENT SHIP
         // ============================================================
@@ -120,6 +140,8 @@ public class Skirmish {
             challenge.end(server, "Couldn't load opponents ship");
             return false;
         }
+
+        oppShipId = oppShip.getId();
 
         // ============================================================
         // LOAD PARTIES
@@ -184,8 +206,6 @@ public class Skirmish {
             player.teleport(skirmishDim, oppSpawn.getX(), oppSpawn.getY(), oppSpawn.getZ(), player.getYaw(), player.getPitch());
         });
 
-
-
         // ============================================================
         // TAKE MONEY
         // ============================================================
@@ -208,44 +228,185 @@ public class Skirmish {
         return true;
     }
 
-    public UUID getId() { return id; }
-
-    public UUID getOppPartyId() {
-        return oppPartyId;
+    /* ---------- count down ---------- */
+    public boolean hasCountdown() {
+        return isCountingdown;
+    }
+    public void countDownTick(MinecraftServer server) {
+        countdownTicks--;
+        if (countdownTicks % 20 == 0) {
+            int secondsLeft = countdownTicks / 20;
+            if (secondsLeft != 0) {
+                broadcastMsg(server, "§eSkirmish starts in §c" + secondsLeft);
+            }
+            else {
+                isCountingdown = false;
+                broadcastMsg(server, "§eSkirmish has started! Fight!");
+                PlayerManager pm = server.getPlayerManager();
+                for (UUID id : getAllInvolvedPlayers()) {
+                    ServerPlayerEntity player = pm.getPlayer(id);
+                    if (player != null) {
+                        player.setNoGravity(false);
+                    }
+                }
+            }
+        }
     }
 
-    public UUID getChPartyId() {
-        return chPartyId;
-    }
-
-    public UUID getOppLeaderId() {
-        return oppLeaderId;
-    }
-
-    public UUID getChLeaderId() {
-        return chLeaderId;
-    }
-
-    public Set<UUID> getAllInvolvedPlayers() {
-        Set<UUID> players = new HashSet<>();
-        players.addAll(spectators);
-        players.addAll(opponents);
-        players.addAll(challengers);
-        return players;
-    }
-
-    public int getWager() {
-        return wager;
-    }
-
+    /* ================= expire ================= */
     public boolean isExpired() {
         return expiresAt < System.currentTimeMillis();
     }
 
-    public boolean isPlayerInSkirmish(UUID playerId) {
-        return challengers.contains(playerId) || opponents.contains(playerId);
+    /* ---------- end ---------- */
+    public void end(MinecraftServer server, EndOfSkirmishType type) {
+        // ============================================================
+        // TELEPORT PLAYERS BACK & RESTORE INVENTORY
+        // ============================================================
+
+        flushPlayers(server);
+
+        // ============================================================
+        // RECORD STATS AND REWARD PLAYERS
+        // ============================================================
+
+        Scoreboard sb = server.getScoreboard();
+        BankComponent bank = CCComponents.BANK.get(sb);
+        StatsComponent stats = SkirmishComponents.STATS.get(sb);
+        switch (type) {
+
+            case CHALLENGERS_WIN_KILLS -> {
+
+                stats.setPartySkirmishStats(chPartyId, 1, 0,
+                        wager, 0, 0, 0);
+
+                stats.setPartySkirmishStats(oppPartyId, 0, 1,
+                        0, wager, 0, 0);
+
+                bank.reward(id, chLeaderId);
+
+                broadcastMsg(server, "Challengers won by kills!");
+            }
+
+            case OPPONENTS_WIN_KILLS -> {
+
+                stats.setPartySkirmishStats(chPartyId, 0, 1,
+                        0, wager, 0, 0);
+
+                stats.setPartySkirmishStats(oppPartyId, 1, 0,
+                        wager, 0, 0, 0);
+
+                bank.reward(id, oppLeaderId);
+
+                broadcastMsg(server, "Opponents won by kills!");
+            }
+
+            case CHALLENGERS_WIN_SHIP -> {
+
+                stats.setPartySkirmishStats(chPartyId, 1, 0,
+                        wager, 0, 0, 1);
+
+                stats.setPartySkirmishStats(oppPartyId, 0, 1,
+                        0, wager, 1, 0);
+
+                bank.reward(id, chLeaderId);
+
+                broadcastMsg(server, "Challengers won by sinking the ship!");
+            }
+
+            case OPPONENTS_WIN_SHIP -> {
+
+                stats.setPartySkirmishStats(chPartyId, 0, 1,
+                        0, wager, 1, 0);
+
+                stats.setPartySkirmishStats(oppPartyId, 1, 0,
+                        wager, 0, 0, 1);
+
+                bank.reward(id, oppLeaderId);
+
+                broadcastMsg(server, "Opponents won by sinking the ship!");
+            }
+
+            case TIME -> {
+
+                bank.reward(id, null);
+
+                broadcastMsg(server, "The time ran out on the skirmish!");
+            }
+        }
+
+        // ============================================================
+        // GET DIMENSION
+        // ============================================================
+        ServerWorld skirmishDim = server.getWorld(SkirmishDimension.SKIRMISH_LEVEL_KEY);
+        if (skirmishDim == null) {
+            return;
+        }
+
+        // ============================================================
+        // DELETE SKIRMISH SHIPS
+        // ============================================================
+        List<Ship> ships = VSGameUtilsKt.getAllShips(skirmishDim).stream().toList();
+        for (Ship ship : ships) {
+            if (ship instanceof ServerShip serverShip) {
+                long id = serverShip.getId();
+                if (id == chShipId || id == oppShipId) {
+                    VLibAPI.discardShip(serverShip, skirmishDim);
+                }
+            }
+        }
+
+        // ============================================================
+        // WIPE DIMENSION REGION CONTENTS
+        // ============================================================
+
+        skirmishDim.iterateEntities().forEach(entity -> {
+            if (!(entity instanceof PlayerEntity)) {
+                entity.discard();
+            }
+        });
+
+        Path dimPath = server.getSavePath(WorldSavePath.ROOT)
+                .resolve("dimensions")
+                .resolve("vs-skirmish")
+                .resolve("skirmish_dim")
+                .resolve("region");
+
+        if (Files.exists(dimPath)) {
+            try (Stream<Path> stream = Files.walk(dimPath)) {
+                stream.filter(p -> p.toString().endsWith(".mca"))
+                        .forEach(path -> {
+                            try {
+                                Files.delete(path);
+                            } catch (IOException e) {
+                                VSSkirmish.LOGGER.error("[SKIRMISH] Failed to delete {}", path, e);
+                            }
+                        });
+            } catch (IOException e) {
+                VSSkirmish.LOGGER.error("[SKIRMISH] IOException during dimension wipe", e);
+            }
+        }
+
+        SkirmishManager.INSTANCE.resetMatch();
+    }
+    private void flushPlayers(MinecraftServer server) {
+        Set<UUID> players = getAllInvolvedPlayers();
+
+        PlayerManager pm = server.getPlayerManager();
+        Scoreboard sb = server.getScoreboard();
+        TeleportComponent tp = CCComponents.TP.get(sb);
+        InventoryComponent ic = CCComponents.INV.get(sb);
+
+        for (UUID id : players) {
+            ServerPlayerEntity player = pm.getPlayer(id);
+            if (player != null) {
+                tp.tpPlayerBack(player, Reason.TDM);
+                ic.restoreInventory(player);
+            }
+        }
     }
 
+    /* ---------- events ---------- */
     public boolean handlePlayerDeath(ServerPlayerEntity player) {
         UUID id = player.getUuid();
         if (challengers.remove(id) || opponents.remove(id)) {
@@ -262,10 +423,10 @@ public class Skirmish {
             }
 
             if (challengers.isEmpty()) {
-                SkirmishManager.INSTANCE.endSkirmish(player.getServer(), EndOfSkirmishType.OPPONENTS_WIN_KILLS);
+                end(player.getServer(), EndOfSkirmishType.OPPONENTS_WIN_KILLS);
             }
             if (opponents.isEmpty()) {
-                SkirmishManager.INSTANCE.endSkirmish(player.getServer(), EndOfSkirmishType.CHALLENGERS_WIN_KILLS);
+                end(player.getServer(), EndOfSkirmishType.CHALLENGERS_WIN_KILLS);
             }
             return false;
         }
@@ -273,39 +434,74 @@ public class Skirmish {
         // player not in skirmish, return true to allow death
         return true;
     }
-
-    public boolean isShipInSkirmish(long id) {
-        return id == chShipId || id == oppShipId;
-    }
-
-    public boolean isChallengerShip(long id) {
-        return chShipId == id;
-    }
-
     public void handlePlayerQuit(MinecraftServer server, ServerPlayerEntity player) {
         UUID id = player.getUuid();
         if (challengers.remove(id)) {
             if (challengers.isEmpty()) {
-                SkirmishManager.INSTANCE.endSkirmish(server, EndOfSkirmishType.OPPONENTS_WIN_KILLS);
+                end(server, EndOfSkirmishType.OPPONENTS_WIN_KILLS);
             }
         }
 
         if (opponents.remove(id)) {
             if (opponents.isEmpty()) {
-                SkirmishManager.INSTANCE.endSkirmish(server, EndOfSkirmishType.CHALLENGERS_WIN_KILLS);
+                end(server, EndOfSkirmishType.CHALLENGERS_WIN_KILLS);
             }
         }
     }
 
-    public void addSpectator(UUID playerId) {
-         spectators.add(playerId);
+    /* ---------- ships ---------- */
+    public boolean isShipInSkirmish(long id) {
+        return id == chShipId || id == oppShipId;
+    }
+    public boolean isChallengerShip(long id) {
+        return chShipId == id;
     }
 
+    /* ---------- spectating ---------- */
+    public void addSpectator(MinecraftServer server, ServerPlayerEntity spec) {
+        ServerPlayerEntity target = null;
+        Set<UUID> allPlayers = new HashSet<>();
+        allPlayers.addAll(challengers);
+        allPlayers.addAll(opponents);
+        PlayerManager pm = server.getPlayerManager();
+        for (UUID id : allPlayers) {
+            ServerPlayerEntity player = pm.getPlayer(id);
+            if (player != null) {
+                target = player;
+                break;
+            }
+        }
+
+        if (target == null) {
+            spec.sendMessage(Text.literal("Error finding teleport pos"));
+            return;
+        }
+
+        CCComponents.TP.get(server.getScoreboard()).set(spec.getUuid(), spec.getBlockPos(), spec.getServerWorld().getRegistryKey());
+
+        BlockPos targetPos = target.getBlockPos();
+        spec.teleport(target.getServerWorld(), targetPos.getX(), targetPos.getY(), targetPos.getZ(), spec.getYaw(), spec.getPitch());
+
+        spec.changeGameMode(GameMode.SPECTATOR);
+
+        BusyPlayers.add(spec.getUuid(), Reason.SKIRMISH);
+
+        spec.sendMessage(Text.literal("You are now spectating, enjoy!"));
+        spectators.add(spec.getUuid());
+    }
+    public boolean isPlayerSpectating(UUID id) {
+        return spectators.contains(id);
+    }
+    public void removeSpectator(MinecraftServer server, ServerPlayerEntity player) {
+        CCComponents.TP.get(server.getScoreboard()).tpPlayerBack(player, Reason.SKIRMISH);
+        spectators.remove(player.getUuid());
+    }
+
+    /* ---------- broadcast ---------- */
     public void broadcastMsg(MinecraftServer server, String msg) {
         broadcastMsgToChParty(server, msg);
         broadcastMsgToOppParty(server, msg);
     }
-
     public void broadcastMsgToChParty(MinecraftServer server, String msg) {
         IPartyManagerAPI pm = OpenPACServerAPI.get(server).getPartyManager();
         IServerPartyAPI chParty = pm.getPartyById(chPartyId);
@@ -315,7 +511,6 @@ public class Skirmish {
             });
         }
     }
-
     public void broadcastMsgToOppParty(MinecraftServer server, String msg) {
         IPartyManagerAPI pm = OpenPACServerAPI.get(server).getPartyManager();
         IServerPartyAPI oppParty = pm.getPartyById(oppPartyId);
@@ -326,28 +521,16 @@ public class Skirmish {
         }
     }
 
-    public long getChShipId() {
-        return chShipId;
+    /* ---------- players ---------- */
+    public Set<UUID> getAllInvolvedPlayers() {
+        Set<UUID> players = new HashSet<>();
+        players.addAll(spectators);
+        players.addAll(opponents);
+        players.addAll(challengers);
+        return players;
     }
-
-    public long getOppShipId() {
-        return oppShipId;
-    }
-
-    public Set<UUID> getStillAlive() {
-        Set<UUID> stillAlive = new HashSet<>();
-        stillAlive.addAll(challengers);
-        stillAlive.addAll(opponents);
-        return stillAlive;
-    }
-
-    public boolean isPlayerSpectating(UUID id) {
-        return spectators.contains(id);
-    }
-
-    public void removeSpectator(MinecraftServer server, ServerPlayerEntity player) {
-        CCComponents.TP.get(server.getScoreboard()).tpPlayerBack(player);
-        spectators.remove(player.getUuid());
+    public boolean isPlayerInSkirmish(UUID playerId) {
+        return challengers.contains(playerId) || opponents.contains(playerId);
     }
 
 //    public void runDistanceCheck(MinecraftServer server) {

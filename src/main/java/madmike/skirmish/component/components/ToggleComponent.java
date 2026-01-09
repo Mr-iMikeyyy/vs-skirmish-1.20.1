@@ -36,7 +36,7 @@ public class ToggleComponent implements ComponentV3 {
         enabledParties.remove(partyId);
     }
 
-    public boolean isEnabled(UUID partyId) {
+    public boolean isReady(UUID partyId) {
         return enabledParties.contains(partyId);
     }
 

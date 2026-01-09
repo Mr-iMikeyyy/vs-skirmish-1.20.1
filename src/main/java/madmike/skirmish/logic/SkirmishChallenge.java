@@ -24,6 +24,8 @@ public class SkirmishChallenge {
     private final int wager;
     private final long expiresAt;
 
+    private boolean accepted = false;
+
     public SkirmishChallenge(UUID chPartyId, StructureTemplate chShipTemplate, UUID oppPartyId, StructureTemplate oppShip, int wager) {
         this.chPartyId = chPartyId;
         this.chShipTemplate = chShipTemplate;
@@ -35,42 +37,15 @@ public class SkirmishChallenge {
         this.expiresAt = (SkirmishConfig.skirmishChallengeMaxTime * 1000L) + System.currentTimeMillis();
     }
 
-    public ServerPlayerEntity getChLeader(MinecraftServer server) {
-        IServerPartyAPI party = OpenPACServerAPI.get(server).getPartyManager().getPartyById(chPartyId);
-        if (party == null) {
-            return null;
-        }
-        return server.getPlayerManager().getPlayer(party.getOwner().getUUID());
-    }
-
-    public ServerPlayerEntity getOppLeader(MinecraftServer server) {
-        IServerPartyAPI party = OpenPACServerAPI.get(server).getPartyManager().getPartyById(oppPartyId);
-        if (party == null) {
-            return null;
-        }
-        return server.getPlayerManager().getPlayer(party.getOwner().getUUID());
-    }
-
-    public UUID getChPartyId() {
-        return chPartyId;
-    }
-    
-    public StructureTemplate getChShipTemplate() { return chShipTemplate; }
-
-    public UUID getOppPartyId() {
-        return oppPartyId;
-    }
-
-    public StructureTemplate getOppShipTemplate() { return oppShipTemplate; }
-
-    public int getWager() {
-        return wager;
-    }
-
+    /* ================= expire ================= */
     public boolean isExpired() {
         return expiresAt < System.currentTimeMillis();
     }
+    public long getExpiresAt() {
+        return expiresAt;
+    }
 
+    /* ================= end ================= */
     public void end(MinecraftServer server, String msg) {
         IPartyManagerAPI pm = OpenPACServerAPI.get(server).getPartyManager();
         IServerPartyAPI chParty = pm.getPartyById(chPartyId);
@@ -91,10 +66,55 @@ public class SkirmishChallenge {
                 BusyPlayers.remove(p.getUuid(), Reason.SKIRMISH);
             });
         }
-        SkirmishManager.INSTANCE.setCurrentChallenge(null);
     }
 
+    /* ================= accept ================= */
+    public void accept() {
+        accepted = true;
+    }
+    public boolean isAccepted() {
+        return accepted;
+    }
+
+    /* ================= party leaders ================= */
+    public ServerPlayerEntity getChLeader(MinecraftServer server) {
+        IServerPartyAPI party = OpenPACServerAPI.get(server).getPartyManager().getPartyById(chPartyId);
+        if (party == null) {
+            return null;
+        }
+        return server.getPlayerManager().getPlayer(party.getOwner().getUUID());
+    }
+    public ServerPlayerEntity getOppLeader(MinecraftServer server) {
+        IServerPartyAPI party = OpenPACServerAPI.get(server).getPartyManager().getPartyById(oppPartyId);
+        if (party == null) {
+            return null;
+        }
+        return server.getPlayerManager().getPlayer(party.getOwner().getUUID());
+    }
+
+    /* ================= parties ================= */
+    public UUID getChPartyId() {
+        return chPartyId;
+    }
+    public UUID getOppPartyId() {
+        return oppPartyId;
+    }
+
+    /* ================= ships ================= */
+    public StructureTemplate getChShipTemplate() { return chShipTemplate; }
+    public StructureTemplate getOppShipTemplate() { return oppShipTemplate; }
+
+    /* ================= wager ================= */
+    public int getWager() {
+        return wager;
+    }
+
+    /* ================= broadcast ================= */
     public void broadcastMsg(MinecraftServer server, String msg) {
+        broadcastMsgToChParty(server, msg);
+        broadcastMsgToOppParty(server, msg);
+    }
+    public void broadcastMsgToChParty(MinecraftServer server, String msg) {
         IPartyManagerAPI pm = OpenPACServerAPI.get(server).getPartyManager();
         IServerPartyAPI chParty = pm.getPartyById(chPartyId);
         if (chParty != null) {
@@ -102,6 +122,9 @@ public class SkirmishChallenge {
                 p.sendMessage(Text.literal(msg));
             });
         }
+    }
+    public void broadcastMsgToOppParty(MinecraftServer server, String msg) {
+        IPartyManagerAPI pm = OpenPACServerAPI.get(server).getPartyManager();
         IServerPartyAPI oppParty = pm.getPartyById(oppPartyId);
         if (oppParty != null) {
             oppParty.getOnlineMemberStream().forEach(p -> {

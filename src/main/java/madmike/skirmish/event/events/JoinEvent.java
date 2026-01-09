@@ -1,8 +1,10 @@
 package madmike.skirmish.event.events;
 
 import madmike.cc.logic.BusyPlayers;
+import madmike.cc.logic.Reason;
 import madmike.skirmish.component.SkirmishComponents;
 import madmike.skirmish.logic.SkirmishChallenge;
+import madmike.skirmish.logic.SkirmishChallengeManager;
 import madmike.skirmish.logic.SkirmishManager;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.minecraft.server.network.ServerPlayerEntity;
@@ -22,10 +24,10 @@ public class JoinEvent {
             IServerPartyAPI party = pm.getPartyByMember(player.getUuid());
 
             if (party != null) {
-                SkirmishChallenge challenge = SkirmishManager.INSTANCE.getCurrentChallenge();
+                SkirmishChallenge challenge = SkirmishChallengeManager.INSTANCE.getIncomingChallengeFor(party.getId());
                 if (challenge != null) {
                     if (challenge.getChPartyId().equals(party.getId()) || challenge.getOppPartyId().equals(party.getId())) {
-                        BusyPlayers.add(player.getUuid());
+                        BusyPlayers.add(player.getUuid(), Reason.SKIRMISH);
                     }
                 }
             }

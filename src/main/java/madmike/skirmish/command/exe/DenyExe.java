@@ -1,9 +1,8 @@
 package madmike.skirmish.command.exe;
 
 import com.mojang.brigadier.context.CommandContext;
-import madmike.cc.logic.BusyPlayers;
 import madmike.skirmish.logic.SkirmishChallenge;
-import madmike.skirmish.logic.SkirmishManager;
+import madmike.skirmish.logic.SkirmishChallengeManager;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.server.network.ServerPlayerEntity;
@@ -37,15 +36,10 @@ public class DenyExe {
         // ============================================================
         // VALIDATE CHALLENGE
         // ============================================================
-        SkirmishChallenge challenge = SkirmishManager.INSTANCE.getCurrentChallenge();
+        SkirmishChallenge challenge = SkirmishChallengeManager.INSTANCE.getIncomingChallengeFor(party.getId());
 
         if (challenge == null) {
             player.sendMessage(Text.literal("§cThere are no challenges to deny"), false);
-            return 0;
-        }
-
-        if (!challenge.getOppPartyId().equals(party.getId())) {
-            player.sendMessage(Text.literal("§cYour party is not the target of the current challenge"), false);
             return 0;
         }
 
@@ -53,20 +47,7 @@ public class DenyExe {
         // DENY CHALLENGE
         // ============================================================
 
-        challenge.broadcastMsg(server, "The skirmish challenge was denied");
-
-        party.getOnlineMemberStream().forEach(p -> {
-            BusyPlayers.remove(p.getUuid());
-        });
-
-        IServerPartyAPI chParty = pm.getPartyById(challenge.getChPartyId());
-        if (chParty != null) {
-            chParty.getOnlineMemberStream().forEach(p -> {
-                BusyPlayers.remove(p.getUuid());
-            });
-        }
-
-        challenge.end(server, "Opponents denied the challenge");
+        SkirmishChallengeManager.INSTANCE.removeChallenge(server, challenge, "Skirmish challenge was denied");
 
         return 1;
     }
